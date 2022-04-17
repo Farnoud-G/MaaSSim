@@ -6,6 +6,7 @@
 
 from enum import Enum
 import time
+import pandas as pd
 
 
 class driverEvent(Enum):
@@ -47,6 +48,10 @@ class VehicleAgent(object):
             self.veh.pos = self.sim.vehicle_fixed_positions.loc[self.id] #f#
         self.platform_id = self.veh.platform  # id of a platform
         self.platform = self.sim.plats[self.platform_id]  # reference to the platform
+        
+        self.offers = dict()  #f# received offers (from various platforms)
+        self.declines = pd.DataFrame(columns=['veh_id','pax_id','declined']) #f#
+        self.speed = self.sim.params.speeds.ride #f#
 
         # local variables
         self.paxes = list()

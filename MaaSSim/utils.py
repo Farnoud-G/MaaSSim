@@ -161,8 +161,6 @@ def generate_vehicles(_inData, _params, nV):
     vehs.shift_start = 0
     vehs.shift_end = 60 * 60 * 24
     vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
-    vehs['mu'] = 0 #f#
-    vehs['res_wage'] = np.random.normal(_params.d2d.res_wage, _params.d2d.res_wage_eps, nV) #f#
 
     return vehs
 

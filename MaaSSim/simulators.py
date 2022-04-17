@@ -13,8 +13,6 @@ import pandas as pd
 from scipy.optimize import brute
 import logging
 import re
-from MaaSSim.day_to_day import exp_income #f#
-
 
 
 def single_pararun(one_slice, *args):

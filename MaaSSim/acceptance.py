@@ -1,6 +1,76 @@
 import pandas as pd
 import numpy as np
 from dotmap import DotMap
+import math
+import random as random
+
+def f_decline(veh, **kwargs):
+    
+    sim = veh.sim
+
+    df = pd.DataFrame(veh.myrides)
+    ASC = 1.810                                                                                   #ASC
+    
+    working_shift = sim.params.simTime*3600 - veh.veh['shift_start']                               #Time1_loc
+    T1 = int(working_shift/3)
+    request_time = df[df['event']=='RECEIVES_REQUEST'].iloc[-1]['t']
+    
+    if  request_time in range(veh.veh['shift_start'], veh.veh['shift_start']+T1):
+        Time1 = 1
+    else:
+        Time1 = 0
+        
+    if veh.veh['pos'] in sim.inData.stats.central_nodes:
+        loc = 1
+    else:
+        loc = 0
+        
+        
+    d = veh.offers[1]['request']["origin"]                                                       #pickup_time
+    o = veh.veh.pos
+    pickup_time = veh.sim.skims.ride[o][d]/60  #minutes
+      
+    t = df[df['event']=='RECEIVES_REQUEST'].iloc[-1]['t']                                        #waiting_time
+    
+    if 'ARRIVES_AT_DROPOFF' in df['event'].unique():
+        t0 = df[df['event']=='ARRIVES_AT_DROPOFF'].iloc[-1]['t']
+    else:
+        t0 = df[df['event']=='OPENS_APP'].iloc[-1]['t']
+    waiting_time = (t - t0)/60 #minutes 
+    
+    surge_price = 0                                                                               #surge_price
+    
+    req = 1                         #req                                                          #req_long_rate_dec
+    
+    if (veh.offers[1]["request"]["dist"]/sim.params.speeds.ride)/60 > 6.5: #long
+        long = 1
+    else:
+        long = 0
+        
+    rate = sim.pax[veh.offers[1]['pax_id']].pax.get('rate',5)   #rate
+    
+    if len(veh.declines.index) == 0:          #dec
+        last_declined = 'False'
+    else:
+        last_declined = veh.declines.loc[len(veh.declines.index)-1]['declined']
+        
+    if last_declined == 'True':
+        dec = 1
+    else:
+        dec = 0
+        
+           
+    V = ((ASC*1) + (Time1*loc*(-0.303)) + (pickup_time*(-0.050)) + (waiting_time*(-0.017)) + 
+        ((req*long*rate*dec)*0.091) + (surge_price*0.101))
+    
+    acc_prob = (math.exp(V))/(1+math.exp(V))
+
+    if acc_prob > random.uniform(0, 1):
+        return False
+    else:
+        return True
+
+
 
 def results(sim):
     
