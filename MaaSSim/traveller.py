@@ -209,16 +209,17 @@ class PassengerAgent(object):
                 yield self.got_offered | self.sim.timeout(self.sim.params.times.patience,
                                                         variability=self.sim.vars.patience)
 
-                # print(self.offers)
-                if len(self.offers) > 1:
-                    did_i_opt_out = self.f_platform_choice(traveller=self)
-                elif len(self.offers) == 1:
-                    platform_id, offer = list(self.offers.items())[0]
-                    if self.f_trav_mode(traveller = self):
-                        self.sim.plats[platform_id].handle_rejected(offer['pax_id'])
-                        did_i_opt_out = True
-                    else:
-                        self.sim.plats[platform_id].handle_accepted(offer['pax_id'])
+                
+                if self.got_offered.triggered: #f#
+                    if len(self.offers) > 1:
+                        did_i_opt_out = self.f_platform_choice(traveller=self)
+                    elif len(self.offers) == 1:
+                        platform_id, offer = list(self.offers.items())[0]
+                        if self.f_trav_mode(traveller = self):
+                            self.sim.plats[platform_id].handle_rejected(offer['pax_id'])
+                            did_i_opt_out = True
+                        else:
+                            self.sim.plats[platform_id].handle_accepted(offer['pax_id'])
                 else:
                     self.sim.logger.info("pax {:>4}  {:40} {}".format(self.id, 'has no offers ',
                                                                       self.sim.print_now()))

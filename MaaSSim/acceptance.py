@@ -7,6 +7,36 @@ import random as random
 def f_decline(veh, **kwargs):
     
     sim = veh.sim
+    df = pd.DataFrame(veh.myrides)
+    ASC = 1.810                                                                                   #ASC    
+        
+    d = veh.offers[1]['request']["origin"]                                                       #pickup_time
+    o = veh.veh.pos
+    pickup_time = veh.sim.skims.ride[o][d]/60  #minutes
+      
+    t = df[df['event']=='RECEIVES_REQUEST'].iloc[-1]['t']                                        #waiting_time
+    if 'ARRIVES_AT_DROPOFF' in df['event'].unique():
+        t0 = df[df['event']=='ARRIVES_AT_DROPOFF'].iloc[-1]['t']
+    else:
+        t0 = df[df['event']=='OPENS_APP'].iloc[-1]['t']
+    waiting_time = (t - t0)/60 #minutes 
+        
+           
+    V = (ASC*1)+ (pickup_time*(-0.050)) + (waiting_time*(-0.017))
+    
+    acc_prob = (math.exp(V))/(1+math.exp(V))
+
+    if acc_prob > random.uniform(0, 1):
+        return False
+    else:
+        return True
+
+
+
+
+def f_decline_base(veh, **kwargs):
+    
+    sim = veh.sim
 
     df = pd.DataFrame(veh.myrides)
     ASC = 1.810                                                                                   #ASC
