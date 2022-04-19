@@ -89,6 +89,9 @@ class Simulator:
                             .format(self.params.simTime,
                                     self.t0, self.params.nV, self.params.nP,
                                     self.params.city))
+        self.driver_p = []         
+        self.traveller_p = [] 
+        
         # self.income = DotMap() #f#
         # self.income.expected = pd.DataFrame({'veh_id': list(range(1,self.params.nV+1))}).set_index('veh_id') #f#
         # self.inData.vehicles.expected_income = self.params.d2d.ini_exp_income #f#

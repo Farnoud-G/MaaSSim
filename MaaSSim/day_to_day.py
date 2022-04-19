@@ -20,6 +20,7 @@ def driver_opt_out(veh, **kwargs): # user defined function to represent agent pa
     
     if params.d2d.probabilistic:
         working_P = (math.exp(working_U))/(math.exp(working_U) + math.exp(not_working_U))
+        sim.driver_p.append(working_P)
         return bool(working_P < random.uniform(0,1))
     else:
         return bool(working_U < not_working_U)
@@ -40,7 +41,7 @@ def traveller_opt_out(pax, **kwargs):
     alt_U = -params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000- params.d2d.get('B_time',0.1)*(req.dist/params.PT_speed)/60
    
 
-     #if True :pax.id == 0:
+     #if True :
 #         print('rhmoney',-params.d2d.get('B_fare',1)*rh_fare,'----','time', - params.d2d.get('B_time',0.1)*(req.ttrav.total_seconds()/60+exp_wait_t) + pax.pax.get('exp_utility_eps', 0))
 #         print('altmoney',-params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000,'----','time', -params.d2d.get('B_time',0.1)*(req.dist/params.PT_speed)/60)
 
@@ -49,6 +50,7 @@ def traveller_opt_out(pax, **kwargs):
     
     if params.d2d.probabilistic:
         rh_P = (math.exp(rh_U))/(math.exp(rh_U)+math.exp(alt_U))
+        sim.traveller_p.append(rh_P)
         return bool(rh_P < random.uniform(0,1))
     else:
         return bool(rh_U < alt_U)

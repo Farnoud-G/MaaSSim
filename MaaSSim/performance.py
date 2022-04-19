@@ -19,6 +19,7 @@ def kpi_pax(*args,**kwargs):
     simrun = sim.runs[run_id]
     paxindex = sim.inData.passengers.index
     df = simrun['trips'].copy()  # results of previous simulation
+    PREFERS_OTHER_SERVICE = df[df.event == travellerEvent.PREFERS_OTHER_SERVICE.name].pax  # track drivers out
     dfs = df.shift(-1)  # to map time periods between events
     dfs.columns = [_ + "_s" for _ in df.columns]  # columns with _s are shifted
     df = pd.concat([df, dfs], axis=1)  # now we have time periods
@@ -36,7 +37,9 @@ def kpi_pax(*args,**kwargs):
     for status in travellerEvent:
         if status.name not in ret.columns:
             ret[status.name] = 0  # cover all statuses
-
+    PREFERS_OTHER_SERVICE.index = PREFERS_OTHER_SERVICE.values
+    ret['OUT'] = PREFERS_OTHER_SERVICE
+    ret['OUT'] = ~ret['OUT'].isnull() 
     # meaningful names
     ret['TRAVEL'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
     ret['WAIT'] = ret['RECEIVES_OFFER'] + ret[
