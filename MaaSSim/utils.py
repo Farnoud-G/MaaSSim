@@ -138,9 +138,9 @@ def generate_platforms(_inData, _params, nPM): #f#
     for i in range(nPM + 1):
         plats.append(empty_series(_inData.platforms, name=i))
     plats = pd.concat(plats, axis=1, keys=range(1, nPM + 1)).T
-    plats.fare = _params.platforms.fare
-    plats['base_fare'] = _params.platforms.base_fare
-    plats['min_fare'] = _params.platforms.min_fare
+    plats.fare = _params.platforms.get('fare', 1)
+    plats['base_fare'] = _params.platforms.get('base_fare',1)
+    plats['min_fare'] = _params.platforms.get('min_fare',2)
     return plats    
 
 
