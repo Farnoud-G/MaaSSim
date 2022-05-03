@@ -198,6 +198,75 @@ def f_decline_base(veh, **kwargs):
         return True
 
 
+def f_decline_R50 (veh, **kwargs):
+    
+    sim = veh.sim
+    df = pd.DataFrame(veh.myrides)  
+
+    R50 = random.random()
+        
+
+    
+    if R50 <0.5 :
+        return False
+    else:
+        return True
+
+def f_decline_R75 (veh, **kwargs):
+    
+    sim = veh.sim
+    df = pd.DataFrame(veh.myrides)  
+
+    R50 = random.random()
+        
+
+    
+    if R50 <0.75 :
+        return False
+    else:
+        return True
+
+def f_decline_R100 (veh, **kwargs):
+    
+    sim = veh.sim
+    df = pd.DataFrame(veh.myrides)  
+
+    R50 = random.random()
+        
+
+    
+    if R50 <1 :
+        return False
+    else:
+        return True
+
+def f_decline_mixed (veh, **kwargs):
+
+    sim= veh.sim
+    params = sim.params
+    id = veh.id
+    
+    R = random.random()
+
+    if id < params.nV/3:
+        if R <0.5 :
+            return False
+        else:
+            return True
+
+    if params.nV/3<id<2*params.nV/3:
+        if R <0.75 :
+            return False
+        else:
+            return True
+
+    if 2*params.nV/3<id:
+        if R <1 :
+            return False
+        else:
+            return True
+
+
 
 def results(sim):
     
