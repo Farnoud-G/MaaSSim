@@ -24,7 +24,8 @@ def RA_kpi_veh(*args,**kwargs):
     ret = df.groupby(['veh', 'event_s'])['dt'].sum().unstack()  # aggreagted by vehicle and event
     ret.columns.name = None
     ret = ret.reindex(vehindex)  # update for vehicles with no record
-    ret['nRIDES'] = df[df.event == driverEvent.RECEIVES_REQUEST.name].groupby(['veh']).size().reindex(ret.index)
+    ret['nREQUESTS'] = df[df.event == driverEvent.RECEIVES_REQUEST.name].groupby(['veh']).size().reindex(ret.index)
+    ret['nRIDES'] = df[df.event == driverEvent.ARRIVES_AT_DROPOFF.name].groupby(['veh']).size().reindex(ret.index)
     ret['nREJECTS'] = df[df.event==driverEvent.REJECTS_REQUEST.name].groupby(['veh']).size().reindex(ret.index)
     for status in driverEvent:
         if status.name not in ret.columns:
@@ -34,7 +35,7 @@ def RA_kpi_veh(*args,**kwargs):
     ret['OUT'] = ~ret['OUT'].isnull()
     ret['DRIVING_TIME'] = ret.ARRIVES_AT_PICKUP + ret.ARRIVES_AT_DROPOFF #we assum there is no repositioning
     ret['DRIVING_DIST'] = ret['DRIVING_TIME']*(params.speeds.ride/1000)   #here we assume the speed is constant on the network
-    ret['IDLE_TIME'] = ret['RECEIVES_REQUEST']
+    ret['IDLE_TIME'] = ret['ENDS_SHIFT'] + ret['RECEIVES_REQUEST']
     ret.fillna(0, inplace=True)  
     d = df[df['event_s']=='ARRIVES_AT_DROPOFF']
     if len(d) != 0:
@@ -44,11 +45,12 @@ def RA_kpi_veh(*args,**kwargs):
         ret['REVENUE'] = 0
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
-    ret['ACCEPTANCE_RATE'] = ((ret['nRIDES']-ret['nREJECTS'])/ret['nRIDES'])*100
+    ret['ACCEPTANCE_RATE'] = (ret['nRIDES']/ret['nREQUESTS'])*100
     ret.replace([np.inf, -np.inf], np.nan, inplace=True)
     ret.fillna(0, inplace=True)  
 
-    ret = ret[['ACCEPTANCE_RATE','PROFIT','IDLE_TIME','nRIDES','nREJECTS','DRIVING_TIME','DRIVING_DIST','REVENUE','COST']]#+ [_.name for _ in driverEvent]]
+    ret = ret[['ACCEPTANCE_RATE','PROFIT','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_TIME','DRIVING_DIST',
+               'REVENUE','COST']]#+ [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
     # KPIs
@@ -198,58 +200,6 @@ def f_decline_base(veh, **kwargs):
         return True
 
 
-def f_decline_R50 (veh, **kwargs):
-    
-    sim = veh.sim
-    df = pd.DataFrame(veh.myrides)  
-
-    R50 = random.randint(0,1)
-        
-
-    
-    if R50 ==0 :
-        return True
-    else:
-        return False
-
-def f_decline_R25 (veh, **kwargs):
-    
-    sim = veh.sim
-    df = pd.DataFrame(veh.myrides) 
-
-
-    R75 = random.randint(1,4)
-        
-
-    
-    if R75==4:
-        return True
-    else:
-        return False
-
-def f_decline_R0 (veh, **kwargs):
-    
-    sim = veh.sim
-    df = pd.DataFrame(veh.myrides)  
-
-    return False
-
-def f_decline_mixed (veh, **kwargs):
-
-    sim= veh.sim
-    params = sim.params
-    id = veh.id
-    
-    R = random.random()
-
-    if id < params.nV/3:
-        return f_decline_R50(veh, **kwargs)
-
-    if params.nV/3<id<2*params.nV/3:
-        return f_decline_R25(veh, **kwargs)
-
-    if 2*params.nV/3<id:
-        return f_decline_R0(veh, **kwargs)
 
 def results(sim):
     
