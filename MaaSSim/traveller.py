@@ -136,6 +136,7 @@ class PassengerAgent(object):
         self.dropoffed = self.sim.env.event()  # I got dropped off
 
         self.veh = None  # vehicle used by passenger (empty at creation)
+        self.veh_id = None #f#
         self.offer = dict()  # selected offer
         self.offers = dict()  # received offers (from various platforms)
         self.msg = ''  # log message
@@ -161,7 +162,12 @@ class PassengerAgent(object):
         stage['pos'] = self.pax.pos
         stage['t'] = self.sim.env.now
         stage['event'] = self.pax.event.name
-        stage['veh_id'] = None if self.veh is None else self.veh.name
+        #stage['veh_id'] = None if self.veh is None else self.veh.name
+        if stage['event'] in ['RECEIVES_OFFER','ACCEPTS_OFFER','IS_REJECTED_BY_VEHICLE']: #f#
+            stage['veh_id'] = self.veh_id
+        else:
+            stage['veh_id'] = None if self.veh is None else self.veh.name
+
         self.rides.append(stage)
         self.disp()
 

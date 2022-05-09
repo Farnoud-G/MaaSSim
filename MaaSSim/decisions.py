@@ -202,9 +202,9 @@ def f_match(**kwargs):
         req_id = request.name
         simpaxes = request.sim_schedule.req_id.dropna().unique()
         simpax = sim.pax[simpaxes[0]]  # first traveller of shared ride (he is a leader and decision maker)
-
         veh.update(event=driverEvent.RECEIVES_REQUEST)
         for i in simpaxes:
+            sim.pax[i].veh_id = veh_id #f#
             sim.pax[i].update(event=travellerEvent.RECEIVES_OFFER)
 
         if simpax.veh is not None:  # the traveller already assigned (to a different platform)
