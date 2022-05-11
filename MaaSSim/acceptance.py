@@ -48,6 +48,24 @@ def RA_kpi_veh(*args,**kwargs):
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
     ret['ACCEPTANCE_RATE'] = (ret['nRIDES']/ret['nREQUESTS'])*100
+    # add imposed delay------------------------------------------------
+    # trips = simrun['trips']
+    # trips = trips.reset_index().drop(["index"], axis=1)
+    # i = 0
+    # len_ = len(trips)
+    # while i < len_:
+    #     #print(i)
+    #     if trips.loc[i]['event'] != 'IS_REJECTED_BY_VEHICLE':
+    #         trips.drop(i, inplace=True)
+    #     else:
+    #         trips.at[i,'t'] = trips['t'].loc[i+1] - trips['t'].loc[i]
+    #         i += 1
+    #         trips.drop(i, inplace=True)
+    #     i += 1
+    # trips = trips.groupby(['veh_id']).sum()
+    # ret['IMPOSED_DELAY'] = ret.apply(lambda row: 0 if row['nREJECTS'] ==0 else row['nREJECTS']*15 + 
+    #                                  trips.loc[row.name]['t'], axis=1) # add the IMPOSED_DELAY column to ret
+    #--------------------------------------------------
     ret.replace([np.inf, -np.inf], np.nan, inplace=True)
     ret.fillna(0, inplace=True)  
 
