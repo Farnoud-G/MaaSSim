@@ -6,6 +6,18 @@ from dotmap import DotMap
 import math
 import random as random
 
+def imposed_delay(sim,veh_id):
+    
+    delay=len(sim.vehs[veh_id].lDECLINES)*15
+    
+    for j in sim.vehs[veh_id].lDECLINES:
+        pax=pd.DataFrame(sim.pax[j].rides)
+        for k in range(len(pax[pax['veh_id']==veh_id])):
+            delay=delay+pax['t'].loc[pax[pax['veh_id']==veh_id].index[k]+1]-pax['t'].loc[pax[pax['veh_id']==veh_id].index[k]]
+        
+        
+    return delay
+
 def RA_kpi_veh(*args,**kwargs):
 
     sim =  kwargs.get('sim', None)
@@ -51,14 +63,25 @@ def RA_kpi_veh(*args,**kwargs):
     ret.replace([np.inf, -np.inf], np.nan, inplace=True)
     ret.fillna(0, inplace=True)  
 
+    ret['veh']=ret.index
+    ret['IMPOSED_DELAY'] = ret.apply(lambda row: imposed_delay(sim,row['veh']),axis=1)
+    #ret['IMPOSED_DELAY'] = 0
+    
+    ret['AR']=ret['ACCEPTANCE_RATE'].apply(lambda x: '60 or less' if x<=60 else \
+                                     '60-70' if x>60 and x<=70  else '70-80' if x>70 and x<=80  else '80-90' if x>80 and x<90 else '90-100')
+
+
     ret = ret[['ACCEPTANCE_RATE','PROFIT','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_TIME','DRIVING_DIST',
-               'REVENUE','COST']]#+ [_.name for _ in driverEvent]]
+               'REVENUE','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
+    
+    
     
     # KPIs
     kpi = ret.agg(['sum', 'mean', 'std'])
     kpi['nV'] = ret.shape[0]
-    return {'veh_exp': ret, 'veh_kpi': kpi}
+    AR = ret.groupby(['AR']).describe().T
+    return {'veh_exp': ret, 'veh_kpi': kpi, 'veh_AR': AR }
 
 
 def RA_kpi_pax(*args,**kwargs):
@@ -202,5 +225,76 @@ def f_decline_base(veh, **kwargs):
         return False
     else:
         return True
+    
+def f_decline_R50 (veh, **kwargs):
+    
+    sim = veh.sim  
+    veh.nRIDES+= 1
+    
+    if veh.nDECLINES==0:
+        R50 = random.randint(0,1)
+        
+        if R50 ==0 :
+            veh.nDECLINES+=1
+            return True
+        else:
+            return False
+    else:
+        
+        AR = 1-(veh.nDECLINES/veh.nRIDES)
+        
+        if AR>0.5:
+            veh.nDECLINES+=1
+            return True
+        
+        else:
+            return False
+
+def f_decline_R75 (veh, **kwargs):
+    
+    sim = veh.sim  
+    veh.nRIDES+= 1
+    
+    if veh.nDECLINES==0:
+        R50 = random.randint(0,1)
+        
+        if R50 ==0 :
+            veh.nDECLINES+=1
+            return True
+        else:
+            return False
+    else:
+        
+        AR = 1-(veh.nDECLINES/veh.nRIDES)
+        
+        if AR>0.75:
+            veh.nDECLINES+=1
+            return True
+        
+        else:
+            return False
+        
+def f_decline_R100 (veh, **kwargs):
+    
+    sim = veh.sim
+    return False
+
+def f_decline_mixed (veh, **kwargs):
+
+    sim= veh.sim
+    params = sim.params
+    id = veh.id
+    
+    R = random.random()
+
+    if id < params.nV/3:
+        return f_decline_R50(veh, **kwargs)
+
+    if params.nV/3<id<2*params.nV/3:
+        return f_decline_R75(veh, **kwargs)
+
+    if 2*params.nV/3<id:
+        return f_decline_R100(veh, **kwargs)
+
     
     

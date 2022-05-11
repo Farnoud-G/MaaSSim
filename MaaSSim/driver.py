@@ -70,6 +70,9 @@ class VehicleAgent(object):
         self.arrives = dict()  # list of events for each arrival at passenger origin
         # main action
         self.action = self.sim.env.process(self.loop_day())  # main process in simu
+        self.nRIDES=0
+        self.nDECLINES=0
+        self.lDECLINES=list()
 
     def update(self, event=None, pos=None, db_update=True):
         # call whenever pos or event of vehicle changes

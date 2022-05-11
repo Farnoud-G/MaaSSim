@@ -142,6 +142,7 @@ class PassengerAgent(object):
         self.msg = ''  # log message
 
         self.t_matching = None  # time for match
+        self.lREJECTS=list()
 
 
     def update(self, event, pos=None, t=True, db_update=True):
@@ -163,7 +164,7 @@ class PassengerAgent(object):
         stage['t'] = self.sim.env.now
         stage['event'] = self.pax.event.name
         #stage['veh_id'] = None if self.veh is None else self.veh.name
-        if stage['event'] in ['RECEIVES_OFFER','ACCEPTS_OFFER','IS_REJECTED_BY_VEHICLE']: #f#
+        if stage['event']=='IS_REJECTED_BY_VEHICLE': #f#
             stage['veh_id'] = self.veh_id
         else:
             stage['veh_id'] = None if self.veh is None else self.veh.name

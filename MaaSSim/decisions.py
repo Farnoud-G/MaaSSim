@@ -240,6 +240,8 @@ def f_match(**kwargs):
                                                              'got rejected by vehicle ' + str(veh_id),
                                                              sim.print_now()))
                 platform.tabu.append((vehPos, reqPos))  # they are unmatchable
+                sim.vehs[veh_id].lDECLINES.append(sim.pax[i].id)
+                sim.pax[i].lREJECTS.append(sim.vehs[veh_id].id)
             else:
                 for i in simpaxes:
                     if not sim.pax[i].got_offered.triggered:
