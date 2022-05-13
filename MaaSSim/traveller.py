@@ -134,6 +134,10 @@ class PassengerAgent(object):
         self.arrived_at_pick_up = self.sim.env.event()  # I arrived for pick up
         self.pickuped = self.sim.env.event()   # I got picked up
         self.dropoffed = self.sim.env.event()  # I got dropped off
+        self.reject = self.sim.env.event()
+        self.rec_off = self.sim.env.event()
+        self.is_rej = self.sim.env.event()
+        self.rej_flag = False
 
         self.veh = None  # vehicle used by passenger (empty at creation)
         self.veh_id = None #f#
@@ -164,7 +168,7 @@ class PassengerAgent(object):
         stage['t'] = self.sim.env.now
         stage['event'] = self.pax.event.name
         #stage['veh_id'] = None if self.veh is None else self.veh.name
-        if stage['event'] in ['RECEIVES_OFFER','ACCEPTS_OFFER','IS_REJECTED_BY_VEHICLE']: #f#
+        if stage['event'] in ['IS_REJECTED_BY_VEHICLE']: #,'ACCEPTS_OFFER','RECEIVES_OFFER']: #f#
             stage['veh_id'] = self.veh_id
         else:
             stage['veh_id'] = None if self.veh is None else self.veh.name
@@ -211,6 +215,39 @@ class PassengerAgent(object):
 
                 yield self.sim.timeout(self.sim.params.times.request,
                                        variability=self.sim.vars.request)  # time for transaction
+                
+                while self.rej_flag == True:
+                    yield self.sim.timeout(15)
+                    # yield self.sim.timeout(self.sim.params.times.request,
+                    #                         variability=self.sim.vars.request)
+                    self.update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
+                    for platform_id in self.platform_ids:
+                        platform = self.sim.plats[platform_id]
+                        platform.appendReq(self.id)
+                    yield self.sim.timeout(self.sim.params.times.request,
+                                            variability=self.sim.vars.request)
+                
+                
+                
+                # while self.reject.triggered: 
+                
+                # if self.reject.triggered:
+                #     yield self.sim.timeout(15)
+                #     self.update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
+                #     for platform_id in self.platform_ids:
+                #         platform = self.sim.plats[platform_id]
+                #         platform.appendReq(self.id)
+
+                # else:
+                #     # self.reject.fail()
+                #     for platform_id in self.platform_ids:
+                #         platform = self.sim.plats[platform_id]
+                #         platform.appendReq(self.id)
+                    
+                    
+#                 if self.rec_off.triggered:
+#                     yield self.sim.timeout(100)
+#                     self.update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
 
                 # wait until either vehicle was found or pax lost his patience
                 yield self.got_offered | self.sim.timeout(self.sim.params.times.patience,
@@ -226,6 +263,7 @@ class PassengerAgent(object):
                             self.sim.plats[platform_id].handle_rejected(offer['pax_id'])
                             did_i_opt_out = True
                         else:
+                            #yield self.sim.timeout(100) #f
                             self.sim.plats[platform_id].handle_accepted(offer['pax_id'])
                 else:
                     self.sim.logger.info("pax {:>4}  {:40} {}".format(self.id, 'has no offers ',

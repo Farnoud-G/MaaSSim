@@ -171,7 +171,6 @@ def f_match(**kwargs):
     :param kwargs:
     :return:
     """
-
     platform = kwargs.get('platform')  # platform for which we perform matching
     vehQ = platform.vehQ  # queue of idle vehicles
     reqQ = platform.reqQ  # queue of unserved requests
@@ -205,6 +204,7 @@ def f_match(**kwargs):
         veh.update(event=driverEvent.RECEIVES_REQUEST)
         for i in simpaxes:
             sim.pax[i].veh_id = veh_id #f#
+            # sim.pax[i].rec_off.succeed() #f
             sim.pax[i].update(event=travellerEvent.RECEIVES_OFFER)
 
         if simpax.veh is not None:  # the traveller already assigned (to a different platform)
@@ -231,10 +231,13 @@ def f_match(**kwargs):
                 sim.pax[i].offers[platform.platform.name] = offer  # offer transferred to
                 sim.vehs[veh_id].offers[platform.platform.name] = offer  #f#
             if veh.f_driver_decline(veh=veh):  # allow driver reject the request
+                # sim.pax[i].reject.succeed() #f
+                sim.pax[i].rej_flag = True #f
                 veh.update(event=driverEvent.REJECTS_REQUEST)
                 platform.offers[offer_id]['status'] = -2
                 for i in simpaxes:
-                    sim.pax[i].update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
+                    # sim.pax[i].is_rej.succeed() #f
+                    # sim.pax[i].update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
                     sim.pax[i].offers[platform.platform.name]['status'] = -2
                 sim.logger.warning("pax {:>4}  {:40} {}".format(request.name,
                                                              'got rejected by vehicle ' + str(veh_id),
@@ -242,7 +245,11 @@ def f_match(**kwargs):
                 platform.tabu.append((vehPos, reqPos))  # they are unmatchable
                 sim.vehs[veh_id].lDECLINES.append(sim.pax[i].id) #p
                 sim.pax[i].lREJECTS.append(sim.vehs[veh_id].id) #p
+                #yield veh.sim.timeout(0, variability=0)
+                reqQ.pop(reqQ.index(req_id))  # from the queues
+                break #f
             else:
+                sim.pax[i].rej_flag = False #f
                 for i in simpaxes:
                     if not sim.pax[i].got_offered.triggered:
                         sim.pax[i].got_offered.succeed()
