@@ -45,6 +45,8 @@ def RA_kpi_veh(*args,**kwargs):
     DECIDES_NOT_TO_DRIVE.index = DECIDES_NOT_TO_DRIVE.values
     ret['OUT'] = DECIDES_NOT_TO_DRIVE
     ret['OUT'] = ~ret['OUT'].isnull()
+    ret['PICKUP_TIME'] = ret.ARRIVES_AT_PICKUP 
+    ret['TRIP_TIME'] = ret.ARRIVES_AT_DROPOFF
     ret['DRIVING_TIME'] = ret.ARRIVES_AT_PICKUP + ret.ARRIVES_AT_DROPOFF #we assum there is no repositioning
     ret['DRIVING_DIST'] = ret['DRIVING_TIME']*(params.speeds.ride/1000)   #here we assume the speed is constant on the network
     cooling_t = 60*60*2
@@ -77,7 +79,7 @@ def RA_kpi_veh(*args,**kwargs):
     # trips = trips.groupby(['veh_id']).sum()
     # ret['IMPOSED_DELAY'] = ret.apply(lambda row: 0 if row['nREJECTS'] ==0 else row['nREJECTS']*15 + 
     #                                  trips.loc[row.name]['t'], axis=1) # add the IMPOSED_DELAY column to ret
-    #--------------------------------------------------
+    # #--------------------------------------------------
     ret.replace([np.inf, -np.inf], np.nan, inplace=True)
     ret.fillna(0, inplace=True)  
 
@@ -89,12 +91,11 @@ def RA_kpi_veh(*args,**kwargs):
                                      '60-70' if x>60 and x<=70  else '70-80' if x>70 and x<=80  else '80-90' if x>80 and x<90 else '90-100')
 
 
-    ret = ret[['ACCEPTANCE_RATE','PROFIT','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_TIME','DRIVING_DIST',
-               'REVENUE','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
+    ret = ret[['ACCEPTANCE_RATE','PROFIT','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_DIST',
+               'DRIVING_TIME','PICKUP_TIME','TRIP_TIME','REVENUE','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
+    
     ret.index.name = 'veh'
-    
-    
-    
+
     # KPIs
     kpi = ret.agg(['sum', 'mean', 'std'])
     kpi['nV'] = ret.shape[0]
@@ -315,4 +316,22 @@ def f_decline_mixed (veh, **kwargs):
         return f_decline_R100(veh, **kwargs)
 
     
-    
+                    # while self.reject.triggered: 
+                
+                # if self.reject.triggered:
+                #     yield self.sim.timeout(15)
+                #     self.update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
+                #     for platform_id in self.platform_ids:
+                #         platform = self.sim.plats[platform_id]
+                #         platform.appendReq(self.id)
+
+                # else:
+                #     # self.reject.fail()
+                #     for platform_id in self.platform_ids:
+                #         platform = self.sim.plats[platform_id]
+                #         platform.appendReq(self.id)
+                    
+                    
+#                 if self.rec_off.triggered:
+#                     yield self.sim.timeout(100)
+#                     self.update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
