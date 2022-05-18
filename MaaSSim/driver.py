@@ -7,6 +7,7 @@
 from enum import Enum
 import time
 import pandas as pd
+from .traveller import travellerEvent
 
 
 class driverEvent(Enum):
@@ -52,6 +53,7 @@ class VehicleAgent(object):
         self.offers = dict()  #f# received offers (from various platforms)
         self.declines = pd.DataFrame(columns=['veh_id','pax_id','declined']) #f#
         self.speed = self.sim.params.speeds.ride #f#
+        self.next = self.sim.env.event()
 
         # local variables
         self.paxes = list()
@@ -66,6 +68,8 @@ class VehicleAgent(object):
         self.f_driver_repos = self.sim.functions.f_driver_repos  # reposition after you are free again
         # events
         self.requested = self.sim.env.event()  # triggers when vehicle is requested
+        self.rejects = self.sim.env.event() 
+        self.flagrej = False
         self.arrives_at_pick_up = dict()  # list of events for each passengers in the schedule
         self.arrives = dict()  # list of events for each arrival at passenger origin
         # main action
@@ -73,6 +77,7 @@ class VehicleAgent(object):
         self.nRIDES=0 #p
         self.nDECLINES=0 #p
         self.lDECLINES=list() #p
+        self.rejected_pax_id = None
 
     def update(self, event=None, pos=None, db_update=True):
         # call whenever pos or event of vehicle changes
@@ -136,7 +141,32 @@ class VehicleAgent(object):
                 self.update(event=driverEvent.STARTS_REPOSITIONING)
                 yield self.sim.timeout(repos.time, variability=self.sim.vars.ride)
                 self.update(event=driverEvent.REPOSITIONED, pos=repos.pos)
+         #====================================================================== 
+
             self.platform.appendVeh(self.id)  # appended for the queue
+            yield self.requested | self.rejects | self.sim.timeout(self.till_end())
+            
+            while True:
+                print('you----------------------',self.id)
+                yield self.requested | self.rejects | self.sim.timeout(self.till_end())
+                print('we------------------------', self.id)
+                if self.flagrej == True:
+                    print('me--------------------',self.id)
+                    yield self.sim.pax[self.rejected_pax_id].sim.timeout(30) #| self.requested
+                    self.sim.pax[self.rejected_pax_id].update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
+                    self.update(event=driverEvent.REJECTS_REQUEST)
+
+
+                    self.rejects = self.sim.env.event()  
+                    self.flagrej = False
+                    if self.sim.pax[self.rejected_pax_id].patience_flag == False:
+                        self.platform.appendReq(self.rejected_pax_id)
+                    self.platform.appendVeh(self.id)
+                else:
+                    break
+            
+         #======================================================================   
+
             yield self.requested | self.sim.timeout(self.till_end())  # wait until requested or shift end
             if self.schedule is None:
                 if self.id in self.sim.vehQ:  # early exit if I quit shift, or sim ends

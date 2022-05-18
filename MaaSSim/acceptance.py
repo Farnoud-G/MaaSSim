@@ -335,3 +335,24 @@ def f_decline_mixed (veh, **kwargs):
 #                 if self.rec_off.triggered:
 #                     yield self.sim.timeout(100)
 #                     self.update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
+
+
+
+        #             while True:
+
+        #                 yield self.rejects | self.sim.timeout(self.till_end())
+
+        #                 if self.flagrej == True:
+
+        #                     yield self.sim.pax[self.rejected_pax_id].sim.timeout(30)
+        #                     self.sim.pax[self.rejected_pax_id].update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
+        #                     self.update(event=driverEvent.REJECTS_REQUEST)
+
+
+        #                     self.rejects = self.sim.env.event()               
+        #                     self.platform.appendReq(self.rejected_pax_id)
+        #                     self.platform.appendVeh(self.id)
+        #                     self.flagrej = False
+
+        #                 else:
+        #                     break

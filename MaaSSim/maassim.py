@@ -104,6 +104,8 @@ class Simulator:
         self.env = simpy.Environment()  # simulation environment init
         self.t0 = self.inData.requests.treq.min()  # start at the first request time
         self.t1 = 60 * 60 * (self.params.simTime + 2)
+        
+        self.ft = self.env.event()
 
         self.trips = list()  # report of trips
         self.rides = list()  # report of rides
