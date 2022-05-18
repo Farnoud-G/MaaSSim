@@ -7,7 +7,6 @@
 from enum import Enum
 import time
 import pandas as pd
-from .traveller import travellerEvent
 
 
 class driverEvent(Enum):
@@ -30,6 +29,22 @@ class driverEvent(Enum):
     REPOSITIONED = 13
     DECIDES_NOT_TO_DRIVE = -1
     ENDS_SHIFT = -2
+    
+class travellerEvent(Enum):
+    # actions that a traveller can take
+    STARTS_DAY = 0
+    REQUESTS_RIDE = 1
+    RECEIVES_OFFER = 2
+    IS_REJECTED_BY_VEHICLE = -2
+    ACCEPTS_OFFER = 3
+    REJECTS_OFFER = -3
+    ARRIVES_AT_PICKUP = 5
+    MEETS_DRIVER_AT_PICKUP = 6
+    DEPARTS_FROM_PICKUP = 7
+    ARRIVES_AT_DROPOFF = 8
+    SETS_OFF_FOR_DEST = 9
+    ARRIVES_AT_DEST = 10
+    PREFERS_OTHER_SERVICE = -1
 
 
 class VehicleAgent(object):
@@ -53,7 +68,6 @@ class VehicleAgent(object):
         self.offers = dict()  #f# received offers (from various platforms)
         self.declines = pd.DataFrame(columns=['veh_id','pax_id','declined']) #f#
         self.speed = self.sim.params.speeds.ride #f#
-        self.next = self.sim.env.event()
 
         # local variables
         self.paxes = list()
@@ -68,8 +82,6 @@ class VehicleAgent(object):
         self.f_driver_repos = self.sim.functions.f_driver_repos  # reposition after you are free again
         # events
         self.requested = self.sim.env.event()  # triggers when vehicle is requested
-        self.rejects = self.sim.env.event() 
-        self.flagrej = False
         self.arrives_at_pick_up = dict()  # list of events for each passengers in the schedule
         self.arrives = dict()  # list of events for each arrival at passenger origin
         # main action
@@ -77,7 +89,10 @@ class VehicleAgent(object):
         self.nRIDES=0 #p
         self.nDECLINES=0 #p
         self.lDECLINES=list() #p
-        self.rejected_pax_id = None
+        self.pax_id = None
+        self.rejected_pax_id = None #pf
+        self.rejects = self.sim.env.event() #pf
+        self.flagrej = False #pf
 
     def update(self, event=None, pos=None, db_update=True):
         # call whenever pos or event of vehicle changes
@@ -97,7 +112,12 @@ class VehicleAgent(object):
         ride['pos'] = self.veh.pos
         ride['t'] = self.sim.env.now
         ride['event'] = self.veh.event.name
-        ride['paxes'] = list(self.paxes)  # None if self.request is None else self.request.name
+        
+        if ride['event'] in ['RECEIVES_REQUEST','ACCEPTS_REQUEST','IS_ACCEPTED_BY_TRAVELLER',
+                            'ARRIVES_AT_PICKUP', 'MEETS_TRAVELLER_AT_PICKUP', 'REJECTS_REQUEST']:
+            ride['paxes'] = self.pax_id  
+        else:
+            ride['paxes'] = list(self.paxes)  # None if self.request is None else self.request.name
         self.myrides.append(ride)
 
         self.disp()
@@ -145,14 +165,11 @@ class VehicleAgent(object):
 
             self.platform.appendVeh(self.id)  # appended for the queue
             yield self.requested | self.rejects | self.sim.timeout(self.till_end())
-            
             while True:
-                print('you----------------------',self.id)
                 yield self.requested | self.rejects | self.sim.timeout(self.till_end())
-                print('we------------------------', self.id)
                 if self.flagrej == True:
-                    print('me--------------------',self.id)
                     yield self.sim.pax[self.rejected_pax_id].sim.timeout(30) #| self.requested
+                    # self.sim.pax[self.rejected_pax_id].update(event='IS_REJECTED_BY_VEHICLE)
                     self.sim.pax[self.rejected_pax_id].update(event=travellerEvent.IS_REJECTED_BY_VEHICLE)
                     self.update(event=driverEvent.REJECTS_REQUEST)
 

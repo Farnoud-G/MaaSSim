@@ -202,10 +202,10 @@ def f_match(**kwargs):
         req_id = request.name
         simpaxes = request.sim_schedule.req_id.dropna().unique()
         simpax = sim.pax[simpaxes[0]]  # first traveller of shared ride (he is a leader and decision maker)
+        veh.pax_id = simpaxes
         veh.update(event=driverEvent.RECEIVES_REQUEST)
         for i in simpaxes:
             sim.pax[i].veh_id = veh_id #f#
-            # sim.pax[i].rec_off.succeed() #f
             sim.pax[i].update(event=travellerEvent.RECEIVES_OFFER)
 
         if simpax.veh is not None:  # the traveller already assigned (to a different platform)
@@ -235,7 +235,6 @@ def f_match(**kwargs):
                 veh.rejected_pax_id = sim.pax[i].id
                 veh.rejects.succeed()
                 veh.flagrej = True
-                sim.pax[i].rej_flag = True #f
                 # veh.update(event=driverEvent.REJECTS_REQUEST)
                 platform.offers[offer_id]['status'] = -2
                 for i in simpaxes:
@@ -246,12 +245,9 @@ def f_match(**kwargs):
                 platform.tabu.append((vehPos, reqPos))  # they are unmatchable
                 sim.vehs[veh_id].lDECLINES.append(sim.pax[i].id) #p
                 sim.pax[i].lREJECTS.append(sim.vehs[veh_id].id) #p
-                sim.pax[i].rejected.succeed() #f
-                sim.pax[i].rejected = sim.env.event()
                 reqQ.pop(reqQ.index(req_id))
                 vehQ.pop(vehQ.index(veh_id))
             else:
-                sim.pax[i].rej_flag = False #f
                 veh.flagrej = False
                 for i in simpaxes:
                     if not sim.pax[i].got_offered.triggered:
