@@ -210,14 +210,17 @@ class PassengerAgent(object):
                     platform = self.sim.plats[platform_id]
                     platform.appendReq(self.id)
 
-                yield self.sim.timeout(self.sim.params.times.request,
-                                       variability=self.sim.vars.request)  # time for transaction
+                #Moved to after got_offered 
+                # yield self.sim.timeout(self.sim.params.times.request,
+                #                        variability=self.sim.vars.request)  # time for transaction
 
                 # wait until either vehicle was found or pax lost his patience
                 yield self.got_offered | self.sim.timeout(self.sim.params.times.patience,
                                                         variability=self.sim.vars.patience)
-
                 
+                yield self.sim.timeout(self.sim.params.times.request,
+                                       variability=self.sim.vars.request)  # time for transaction
+
                 if self.got_offered.triggered: #f#
                     if len(self.offers) > 1:
                         did_i_opt_out = self.f_platform_choice(traveller=self)
