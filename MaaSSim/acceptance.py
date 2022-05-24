@@ -13,7 +13,8 @@ def imposed_delay(sim,veh_id):
     for j in sim.vehs[veh_id].lDECLINES:
         pax=pd.DataFrame(sim.pax[j].rides)
         for k in range(len(pax[pax['veh_id']==veh_id])):
-            delay=delay+pax['t'].loc[pax[pax['veh_id']==veh_id].index[k]+1]-pax['t'].loc[pax[pax['veh_id']==veh_id].index[k]]
+            if pax.index[-1]!=pax[pax['veh_id']==veh_id].index[k]:
+                delay=delay+pax['t'].loc[pax[pax['veh_id']==veh_id].index[k]+1]-pax['t'].loc[pax[pax['veh_id']==veh_id].index[k]]
         
         
     return delay
@@ -46,10 +47,13 @@ def RA_kpi_veh(*args,**kwargs):
     ret['OUT'] = DECIDES_NOT_TO_DRIVE
     ret['OUT'] = ~ret['OUT'].isnull()
     ret['PICKUP_TIME'] = ret.ARRIVES_AT_PICKUP 
+    ret['AVE_PICKUP_DIST'] = (ret.ARRIVES_AT_PICKUP/ret.nRIDES) * (params.speeds.ride/1000)
     ret['TRIP_TIME'] = ret.ARRIVES_AT_DROPOFF
+    ret['AVE_TRIP_DIST']= (ret.ARRIVES_AT_DROPOFF/ret.nRIDES) * (params.speeds.ride/1000)
     ret['DRIVING_TIME'] = ret.ARRIVES_AT_PICKUP + ret.ARRIVES_AT_DROPOFF #we assum there is no repositioning
     ret['DRIVING_DIST'] = ret['DRIVING_TIME']*(params.speeds.ride/1000)   #here we assume the speed is constant on the network
     cooling_t = 60*60*2
+    ret['AVE_DRIVING_DIST']=ret['DRIVING_DIST']/ret['nRIDES']
     ret['IDLE_TIME'] = ret.apply(lambda row: row['RECEIVES_REQUEST'] if row['ENDS_SHIFT']<cooling_t 
                                  else row['RECEIVES_REQUEST'] + row['ENDS_SHIFT'] - cooling_t, axis=1)
     ret.fillna(0, inplace=True)  
@@ -59,8 +63,10 @@ def RA_kpi_veh(*args,**kwargs):
         ret['REVENUE'] = d.groupby(['veh']).sum().REVENUE
     else:
         ret['REVENUE'] = 0
+    ret['REVENUE/hour']=ret['REVENUE']/params.simTime
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
+    ret['PROFIT/hour']=ret['PROFIT']/params.simTime
     ret['ACCEPTANCE_RATE'] = (ret['nRIDES']/ret['nREQUESTS'])*100
     # add imposed delay------------------------------------------------
     # trips = simrun['trips']
@@ -85,14 +91,14 @@ def RA_kpi_veh(*args,**kwargs):
 
     ret['veh']=ret.index
     ret['IMPOSED_DELAY'] = ret.apply(lambda row: imposed_delay(sim,row['veh']),axis=1)
-    #ret['IMPOSED_DELAY'] = 0
+    # ret['IMPOSED_DELAY'] = 0
     
     ret['AR']=ret['ACCEPTANCE_RATE'].apply(lambda x: '60 or less' if x<=60 else \
                                      '60-70' if x>60 and x<=70  else '70-80' if x>70 and x<=80  else '80-90' if x>80 and x<90 else '90-100')
 
 
-    ret = ret[['ACCEPTANCE_RATE','PROFIT','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_DIST',
-               'DRIVING_TIME','PICKUP_TIME','TRIP_TIME','REVENUE','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
+    ret = ret[['ACCEPTANCE_RATE','PROFIT','PROFIT/hour','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_DIST','AVE_DRIVING_DIST',
+               'DRIVING_TIME','AVE_PICKUP_DIST','AVE_TRIP_DIST','REVENUE','REVENUE/hour','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
     
     ret.index.name = 'veh'
 
@@ -303,7 +309,7 @@ def f_decline_mixed (veh, **kwargs):
     sim= veh.sim
     params = sim.params
     id = veh.id
-    
+        
     R = random.random()
 
     if id < params.nV/3:

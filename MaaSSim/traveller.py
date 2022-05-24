@@ -165,7 +165,7 @@ class PassengerAgent(object):
         stage['t'] = self.sim.env.now
         stage['event'] = self.pax.event.name
         #stage['veh_id'] = None if self.veh is None else self.veh.name
-        if stage['event'] in ['IS_REJECTED_BY_VEHICLE','ACCEPTS_OFFER','RECEIVES_OFFER']: #f#
+        if stage['event'] in ['IS_REJECTED_BY_VEHICLE']: #f#
             stage['veh_id'] = self.veh_id
         else:
             stage['veh_id'] = None if self.veh is None else self.veh.name
@@ -221,6 +221,7 @@ class PassengerAgent(object):
                 yield self.sim.timeout(self.sim.params.times.request,
                                        variability=self.sim.vars.request)  # time for transaction
 
+                
                 if self.got_offered.triggered: #f#
                     if len(self.offers) > 1:
                         did_i_opt_out = self.f_platform_choice(traveller=self)
