@@ -15,8 +15,8 @@ def driver_opt_out(veh, **kwargs): # user defined function to represent agent pa
     params = sim.params
     expected_income = params.d2d.ini_exp_income if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.EXPECTED_INC.loc[veh.id]
     
-    working_U = params.d2d.get('beta',1)*(expected_income + veh.veh.get('exp_income_eps', 0))
-    not_working_U = params.d2d.get('beta',1)*(params.d2d.res_wage + veh.veh.get('res_wage_eps', 0))
+    working_U = params.d2d.get('B_income',1)*(expected_income + veh.veh.get('exp_income_eps', 0))
+    not_working_U = params.d2d.get('B_income',1)*(params.d2d.res_wage + veh.veh.get('res_wage_eps', 0))
     
     if params.d2d.probabilistic:
         working_P = (math.exp(working_U))/(math.exp(working_U) + math.exp(not_working_U))
@@ -35,18 +35,23 @@ def traveller_opt_out(pax, **kwargs):
     req = pax.request
     plat = sim.platforms.loc[1]
     rh_fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
+    ASC = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.COMMISSION.sum()/10000
+    # if pax.id == 1:
+    #     print('ASC = ', ASC)
     
-    rh_U = -params.d2d.get('B_fare',1)*rh_fare - params.d2d.get('B_time',0.1)*(req.ttrav.total_seconds()/60+exp_wait_t) + pax.pax.get('exp_utility_eps', 0)
+    rh_U = -params.d2d.get('B_fare',1)*rh_fare -params.d2d.get('B_inveh_time',1)*req.ttrav.total_seconds()/3600-params.d2d.get('B_exp_time',1)*exp_wait_t/60 + ASC + pax.pax.get('exp_utility_eps', 0)
     
-    alt_U = -params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000- params.d2d.get('B_time',0.1)*(req.dist/params.PT_speed)/60
-   
-
-     #if True :
-#         print('rhmoney',-params.d2d.get('B_fare',1)*rh_fare,'----','time', - params.d2d.get('B_time',0.1)* (req.ttrav.total_seconds()/60+exp_wait_t))
-#         print('altmoney',-params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000,'----','time', -params.d2d.get('B_time',0.1)*(req.dist/params.PT_speed)/60)
-
-#         print('rh_U= ',rh_U,'---', 'alt_U= ', alt_U)
-#         print(pax.id, '----------------------------------------')
+    alt_U = -params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000 -params.d2d.get('B_inveh_time',1)*(req.dist/params.PT_speed)/3600
+    
+    S = 8
+    rh_U = rh_U*S
+    alt_U = alt_U*S
+    
+    #=================================================================
+#     print('rh_U= ',rh_U,' fare= ', -params.d2d.get('B_fare',1)*rh_fare,' time= ',-params.d2d.get('B_inveh_time',1)*req.ttrav.total_seconds()/3600-params.d2d.get('B_exp_time',1)*exp_wait_t/60)
+    
+#     print('alt_U= ',alt_U,' fare= ',-params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000, 'time= ', -params.d2d.get('B_inveh_time',1)*(req.dist/params.PT_speed)/3600)
+    #=================================================================
     
     if params.d2d.probabilistic:
         rh_P = (math.exp(rh_U))/(math.exp(rh_U)+math.exp(alt_U))
@@ -112,8 +117,8 @@ def d2d_kpi_veh(*args,**kwargs):
     # Djavadian & Chow (2017)
     pre_exp_inc = params.d2d.ini_exp_income if run_id == 0 else sim.res[run_id-1].veh_exp.EXPECTED_INC
     ave_income = 0 if ret.mu.sum() == 0 else ret.ACTUAL_INC.sum()/ret.mu.sum()
-    ret['EXPECTED_INC'] = (1-params.d2d.omega)*pre_exp_inc + params.d2d.omega*ret.mu*ret.ACTUAL_INC+ \
-                           params.d2d.omega*(1-ret.mu)*ave_income
+    ret['EXPECTED_INC'] = (1-params.d2d.veh_omega)*pre_exp_inc + params.d2d.veh_omega*ret.mu*ret.ACTUAL_INC+ \
+                           params.d2d.veh_omega*(1-ret.mu)*ave_income
     #---------------------------------------------------------
     # Arjan (2021)
     # ret['pre_exp_inc'] = params.d2d.ini_exp_income if run_id == 0 else sim.res[run_id-1].veh_exp.EXPECTED_INC
@@ -199,8 +204,8 @@ def d2d_kpi_pax(*args,**kwargs):
     # Djavadian-------------------------------------------------------------------------------------------------------- #
     pre_exp_wt = params.d2d.ini_exp_wt if run_id == 0 else sim.res[run_id-1].pax_exp.EXPECTED_WT
     ave_wt = 0 if ret.mu.sum() == 0 else ret.ACTUAL_WT.sum()/ret.mu.sum()
-    ret['EXPECTED_WT'] = (1-params.d2d.omega)*pre_exp_wt + params.d2d.omega*ret.mu*ret.ACTUAL_WT+ \
-                           params.d2d.omega*(1-ret.mu)*ave_wt
+    ret['EXPECTED_WT'] = (1-params.d2d.pax_omega)*pre_exp_wt + params.d2d.pax_omega*ret.mu*ret.ACTUAL_WT+ \
+                           params.d2d.pax_omega*(1-ret.mu)*ave_wt
     # Arjan------------------------------------------------------------------------------------------------------------ #
     # ret['pre_exp_wt'] = params.d2d.ini_exp_wt if run_id == 0 else sim.res[run_id-1].pax_exp.EXPECTED_WT
     # ret['EXPECTED_WT'] = ret.apply(lambda row: row['pre_exp_wt'] if row['mu']==0 or sim.pax[row.name].pax.get('learning','on')=='off' else (1-(row['nDAYS_HAILED']+1)**(-(params.d2d.kappa)))*row['pre_exp_wt'] + ((row['nDAYS_HAILED']+1)**(-(params.d2d.kappa)))*row['ACTUAL_WT'], axis=1)                                    
