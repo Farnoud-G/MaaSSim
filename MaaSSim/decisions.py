@@ -176,7 +176,7 @@ def f_match(**kwargs):
     reqQ = platform.reqQ  # queue of unserved requests
     sim = platform.sim  # reference to the simulation object
 
-    print(reqQ,vehQ)
+    # print(reqQ,vehQ)
     while min(len(reqQ), len(vehQ)) > 0:  # loop until one of queues is empty (i.e. all requests handled)
         requests = sim.inData.requests.loc[reqQ]  # queued schedules of requests
         vehicles = sim.vehicles.loc[vehQ]  # vehicle agents

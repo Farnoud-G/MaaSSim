@@ -96,14 +96,14 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         from MaaSSim.utils import make_config_paths
         params = make_config_paths(params, main = kwargs.get('make_main_path',False), rel = True)
 
-    if params.paths.get('requests', False):
-        inData = read_requests_csv(inData, path=params.paths.requests)
-
     if params.paths.get('vehicles', False):
         inData = read_vehicle_positions(inData, path=params.paths.vehicles)
 
     if len(inData.G) == 0:  # only if no graph in input
         inData = load_G(inData, params, stats=True)  # download graph for the 'params.city' and calc the skim matrices
+    if params.paths.get('requests', False):
+        inData = read_requests_csv(inData, params, path=params.paths.requests)
+        
     if len(inData.passengers) == 0:  # only if no passengers in input
         inData = generate_demand(inData, params, avg_speed=True)
     if len(inData.vehicles) == 0:  # only if no vehicles in input

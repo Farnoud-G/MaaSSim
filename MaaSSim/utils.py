@@ -235,18 +235,52 @@ def generate_demand(_inData, _params=None, avg_speed=False):
 
     return _inData
 
+def read_requests_csv(_inData,_params, path): #f#
+    from .data_structures import structures
+    try:
+        _params.t0 = pd.to_datetime(_params.t0)
+    except:
+        pass
+    
+    df = pd.read_csv(path)
+    df = df.sample(_params.nP, random_state=1, replace= True)
+    _inData.passengers = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
+    requests = pd.DataFrame(index=_inData.passengers.index, columns=_inData.requests.columns)
+    requests.pax_id = _inData.passengers.index
+    requests.ride_id = _inData.passengers.index
+    requests.origin = list(df.origin) #[1419265970, 46396602] #df.origin
+    requests.destination = list(df.destination) #[46423397, 1686005089]#df.destination
 
-def read_requests_csv(inData, path):
-    from MaaSSim.data_structures import structures
-    inData.requests = pd.read_csv(path, index_col=1)
-    inData.requests.treq = pd.to_datetime(inData.requests.treq)
-    inData.requests['pax_id'] = inData.requests.index.copy()
-    inData.requests.ttrav = pd.to_timedelta(inData.requests.ttrav)
-    inData.passengers = pd.DataFrame(index=inData.requests.index, columns=structures.passengers.columns)
-    inData.passengers['pax_id'] = inData.passengers.index.copy()
-    inData.passengers.pos = inData.requests.origin.copy()
-    inData.passengers.platforms = inData.passengers.platforms.apply(lambda x: [0])
-    return inData
+    if _params.demand_structure.temporal_distribution == 'uniform':
+        treq = np.random.uniform(-_params.simTime * 60 * 60 / 2, _params.simTime * 60 * 60 / 2,
+                                 _params.nP)  # apply uniform distribution on request times
+        
+    requests.treq = [_params.t0 + pd.Timedelta(int(_), 's') for _ in treq]
+    requests['dist'] = requests.apply(lambda request: _inData.skim.loc[request.origin, request.destination], axis=1)
+    requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist, 's').floor('s'), axis=1)
+    requests.tarr = [request.treq + request.ttrav for _, request in requests.iterrows()]
+    requests = requests.sort_values('treq')
+    requests.shareable = False
+    _inData.requests = requests
+    
+    _inData.passengers['pax_id'] = _inData.passengers.index.copy()
+    _inData.passengers.pos = _inData.requests.origin.copy()
+    _inData.passengers.platforms = _inData.passengers.platforms.apply(lambda x: [1])
+    
+    return _inData
+
+
+# def read_requests_csv(inData, path):
+#     from MaaSSim.data_structures import structures
+#     inData.requests = pd.read_csv(path, index_col=1)
+#     inData.requests.treq = pd.to_datetime(inData.requests.treq)
+#     inData.requests['pax_id'] = inData.requests.index.copy()
+#     inData.requests.ttrav = pd.to_timedelta(inData.requests.ttrav)
+#     inData.passengers = pd.DataFrame(index=inData.requests.index, columns=structures.passengers.columns)
+#     inData.passengers['pax_id'] = inData.passengers.index.copy()
+#     inData.passengers.pos = inData.requests.origin.copy()
+#     inData.passengers.platforms = inData.passengers.platforms.apply(lambda x: [0])
+#     return inData
 
 def read_vehicle_positions(inData, path):
     inData.vehicles = pd.read_csv(path, index_col=0)
