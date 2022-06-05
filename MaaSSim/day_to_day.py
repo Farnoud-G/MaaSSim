@@ -18,6 +18,11 @@ def driver_opt_out(veh, **kwargs): # user defined function to represent agent pa
     working_U = params.d2d.get('B_income',1)*(expected_income + veh.veh.get('exp_income_eps', 0))
     not_working_U = params.d2d.get('B_income',1)*(params.d2d.res_wage + veh.veh.get('res_wage_eps', 0))
     
+    #===========================================================
+    # working_U = 
+    # not_working_U = 
+    #===========================================================
+    
     if params.d2d.probabilistic:
         working_P = (math.exp(working_U))/(math.exp(working_U) + math.exp(not_working_U))
         #sim.driver_p.append(working_P)
