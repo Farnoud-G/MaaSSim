@@ -3,6 +3,7 @@ from .driver import driverEvent
 import numpy as np
 import pandas as pd
 import math
+from numpy import log as ln
 import random
 from statsmodels.tsa.stattools import adfuller
 
@@ -18,14 +19,31 @@ def driver_opt_out(veh, **kwargs): # user defined function to represent agent pa
     working_U = params.d2d.get('B_income',1)*(expected_income + veh.veh.get('exp_income_eps', 0))
     not_working_U = params.d2d.get('B_income',1)*(params.d2d.res_wage + veh.veh.get('res_wage_eps', 0))
     
-    #===========================================================
-    # working_U = 
-    # not_working_U = 
-    #===========================================================
-    
     if params.d2d.probabilistic:
         working_P = (math.exp(working_U))/(math.exp(working_U) + math.exp(not_working_U))
-        #sim.driver_p.append(working_P)
+        sim.driver_p.append(working_P)
+        return bool(working_P < random.uniform(0,1))
+    else:
+        return bool(working_U < not_working_U)
+    
+    
+def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent participation choice
+    """
+    This function depends on stochasticity and heterogeneity of model
+    """
+    sim = veh.sim
+    params = sim.params
+    EXPERIENCE_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.EXPERIENCE_U.loc[veh.id]
+    
+    working_U = EXPERIENCE_U #+ 
+    not_working_U = 0.5
+    # print('working_U= ',working_U)
+    
+    if params.d2d.probabilistic:
+        s = 10
+        working_P = (math.exp(s*working_U))/(math.exp(s*working_U) + math.exp(s*not_working_U))
+        # print('working_p= ',working_P)
+        sim.driver_p.append(working_P)
         return bool(working_P < random.uniform(0,1))
     else:
         return bool(working_U < not_working_U)
@@ -130,11 +148,22 @@ def d2d_kpi_veh(*args,**kwargs):
     # ret['EXPECTED_INC'] = ret.apply(lambda row: row['pre_exp_inc'] if row['mu']==0 or sim.vehs[row.name].veh.get('learning','on')=='off' else (1-(row['nDAYS_WORKED']+1)**(-(params.d2d.kappa)))*row['pre_exp_inc'] + ((row['nDAYS_WORKED']+1)**(-(params.d2d.kappa)))*row['ACTUAL_INC'], axis=1)
     #---------------------------------------------------------
     # Nejc model
+    #---------------------------------------------------------
+    # Rafal & Farnoud (2022)
+    ret['pre_EXPERIENCE_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
     
+    if run_id == 0:
+        ret['pre_ACTUAL_INC'] = params.d2d.res_wage
+    else:
+        veh_exp = sim.res[run_id-1].veh_exp
+        ret['pre_ACTUAL_INC'] = ret.apply(lambda row: veh_exp.pre_ACTUAL_INC[row.name] if veh_exp.mu[row.name] == 0 else veh_exp.ACTUAL_INC[row.name], axis=1)
     
-
+    ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['pre_ACTUAL_INC']-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+row.inc_dif))), axis=1)
+    #--------------------------------------------------------
+    
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'DRIVING_DIST', 'REVENUE', 'COST','COMMISSION',
-               'TRIP_FARE','ACTUAL_INC', 'EXPECTED_INC', 'OUT','mu'] + [_.name for _ in driverEvent]]
+               'TRIP_FARE','ACTUAL_INC', 'EXPECTED_INC', 'OUT','mu','EXPERIENCE_U','pre_ACTUAL_INC'] + [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
     # KPIs
