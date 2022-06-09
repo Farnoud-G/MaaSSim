@@ -106,7 +106,13 @@ def RA_kpi_veh(*args,**kwargs):
     kpi = ret.agg(['sum', 'mean', 'std'])
     kpi['nV'] = ret.shape[0]
     AR = ret.groupby(['AR']).describe().T
-    return {'veh_exp': ret, 'veh_kpi': kpi, 'veh_AR': AR }
+    #---------------------------------------------------------------------------------------
+    plats = sim.platforms
+    plats['profit'] = (ret.REVENUE.sum()/(1-params.platforms.comm_rate))*params.platforms.comm_rate
+    
+    #---------------------------------------------------------------------------------------
+    
+    return {'veh_exp': ret, 'veh_kpi': kpi, 'veh_AR': AR, 'platform':plats}
 
 
 def RA_kpi_pax(*args,**kwargs):
