@@ -161,6 +161,7 @@ def generate_vehicles(_inData, _params, nV):
     vehs.shift_start = 0
     vehs.shift_end = 60 * 60 * 24
     vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
+    vehs['working_U'] = 0.5
     
     vehs['learning'] = 'on' #f#
     if _params.d2d.heterogeneous: #f#
