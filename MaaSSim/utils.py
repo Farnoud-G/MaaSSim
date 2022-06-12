@@ -160,7 +160,13 @@ def generate_vehicles(_inData, _params, nV):
     vehs.platform = 1 #f#
     vehs.shift_start = 0
     vehs.shift_end = 60 * 60 * 24
-    vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
+    
+    distances = _inData.skim[_inData.stats['center']].to_frame().dropna()  #f#
+    distances.columns = ['distance'] #f#
+    distances = distances[distances['distance'] < _params.dist_threshold] #f#
+    distances['weight'] =distances['distance'].apply(lambda x:math.exp(_params.demand_structure.origins_dispertion * x)) #f#
+    vehs.pos = list(distances.sample(_params.nV, weights='weight', replace=True).index) #f#
+    # vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
 
     return vehs
 
@@ -243,6 +249,7 @@ def read_requests_csv(_inData,_params, path): #f#
         pass
     
     df = pd.read_csv(path)
+    df = df[df.dist>_params.dist_threshold_min]
     df = df.sample(_params.nP, random_state=1, replace= True)
     _inData.passengers = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
     requests = pd.DataFrame(index=_inData.passengers.index, columns=_inData.requests.columns)
