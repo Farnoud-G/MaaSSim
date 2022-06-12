@@ -41,11 +41,8 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     MARKETING_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.MARKETING_U.loc[veh.id]
     WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.WOM_U.loc[veh.id]
     
-    b1 = 0.5
-    b2 = 0.25
-    b3 = 0.25
-    working_U = b1*EXPERIENCE_U + b2*MARKETING_U + b3*WOM_U
-    not_working_U = b1*0.5 + b2*0.5 #+ b3*0.5
+    working_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
+    not_working_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     # print('veh id ', veh.id,'U= ',  working_U)
     veh.veh.working_U = working_U
     
@@ -53,7 +50,7 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         s = 20
         working_P = (math.exp(s*working_U))/(math.exp(s*working_U) + math.exp(s*not_working_U))
         # print('working_p= ',working_P)
-        # sim.driver_p.append(working_P)
+        sim.driver_p.append(working_P)
         return bool(working_P < random.uniform(0,1))
     else:
         return bool(working_U < not_working_U)
@@ -62,25 +59,22 @@ def S_traveller_opt_out(pax, **kwargs):
     
     sim = pax.sim
     params = sim.params
-    exp_wait_t = params.d2d.ini_exp_wt if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPECTED_WT.loc[pax.id]
+    informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.INFORMED.loc[pax.id]
+    if informed==False:
+        return True
     
-    req = pax.request
-    plat = sim.platforms.loc[1]
-    rh_fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
-    ASC = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.COMMISSION.sum()/10000
-    # if pax.id == 1:
-    #     print('ASC = ', ASC)
+    EXPERIENCE_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPERIENCE_U.loc[pax.id]
+    MARKETING_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.MARKETING_U.loc[pax.id]
+    WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.WOM_U.loc[pax.id]
     
-    rh_U = -params.d2d.get('B_fare',1)*rh_fare -params.d2d.get('B_inveh_time',1)*req.ttrav.total_seconds()/3600-params.d2d.get('B_exp_time',1)*exp_wait_t/60 + ASC + pax.pax.get('exp_utility_eps', 0)
-    alt_U = -params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000 -params.d2d.get('B_inveh_time',1)*(req.dist/params.PT_speed)/3600
+    rh_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
+    alt_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     
-    S = 8
-    rh_U = rh_U*S
-    alt_U = alt_U*S
-
+    pax.pax.rh_U = rh_U
     if params.d2d.probabilistic:
-        rh_P = (math.exp(rh_U))/(math.exp(rh_U)+math.exp(alt_U))
-        sim.traveller_p.append(rh_P)
+        s = 20
+        rh_P = (math.exp(s*rh_U))/(math.exp(s*rh_U)+math.exp(s*alt_U))
+        # sim.traveller_p.append(rh_P)
         return bool(rh_P < random.uniform(0,1))
     else:
         return bool(rh_U < alt_U)
@@ -107,6 +101,8 @@ def traveller_opt_out(pax, **kwargs):
     S = 8
     rh_U = rh_U*S
     alt_U = alt_U*S
+    
+    # print('rh_U= ',rh_U,'alt_U= ',alt_U)
     
     #=================================================================
 #     print('rh_U= ',rh_U,' fare= ', -params.d2d.get('B_fare',1)*rh_fare,' time= ',-params.d2d.get('B_inveh_time',1)*req.ttrav.total_seconds()/3600-params.d2d.get('B_exp_time',1)*exp_wait_t/60)
@@ -176,10 +172,10 @@ def d2d_kpi_veh(*args,**kwargs):
     #update_learning_status(sim, ret)
     #---------------------------------------------------------
     # Djavadian & Chow (2017)
-    pre_exp_inc = params.d2d.ini_exp_income if run_id == 0 else sim.res[run_id-1].veh_exp.EXPECTED_INC
-    ave_income = 0 if ret.mu.sum() == 0 else ret.ACTUAL_INC.sum()/ret.mu.sum()
-    ret['EXPECTED_INC'] = (1-params.d2d.veh_omega)*pre_exp_inc + params.d2d.veh_omega*ret.mu*ret.ACTUAL_INC+ \
-                           params.d2d.veh_omega*(1-ret.mu)*ave_income
+    # pre_exp_inc = params.d2d.ini_exp_income if run_id == 0 else sim.res[run_id-1].veh_exp.EXPECTED_INC
+    # ave_income = 0 if ret.mu.sum() == 0 else ret.ACTUAL_INC.sum()/ret.mu.sum()
+    # ret['EXPECTED_INC'] = (1-params.d2d.veh_omega)*pre_exp_inc + params.d2d.veh_omega*ret.mu*ret.ACTUAL_INC+ \
+    #                        params.d2d.veh_omega*(1-ret.mu)*ave_income
     #---------------------------------------------------------
     # Arjan (2021)
     # ret['pre_exp_inc'] = params.d2d.ini_exp_income if run_id == 0 else sim.res[run_id-1].veh_exp.EXPECTED_INC
@@ -192,7 +188,7 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].veh_exp.INFORMED
     #-------------------------------------------------------
     """ Utility gained through experience"""
-    
+
     ret['pre_EXPERIENCE_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
     
     if run_id == 0:
@@ -208,8 +204,7 @@ def d2d_kpi_veh(*args,**kwargs):
 
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
-    percentage = 10/100 # this percentage should be a function of platfrom profit
-    retx = ret.sample(int(percentage*params.nV))
+    retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
     retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
     retx['INFORMED'] = True
     ret.update(retx)
@@ -241,7 +236,7 @@ def d2d_kpi_veh(*args,**kwargs):
     #===================================================================
     
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'DRIVING_DIST', 'REVENUE',
-               'COST','COMMISSION','TRIP_FARE','ACTUAL_INC', 'EXPECTED_INC','OUT','mu','INFORMED',
+               'COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu','INFORMED',
                'EXPERIENCE_U','MARKETING_U','WOM_U','pre_ACTUAL_INC'] + [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
@@ -315,16 +310,73 @@ def d2d_kpi_pax(*args,**kwargs):
     
     # Traveller adaptation (learning) --------------------------------------------------------------------------------- #
     # Djavadian-------------------------------------------------------------------------------------------------------- #
-    pre_exp_wt = params.d2d.ini_exp_wt if run_id == 0 else sim.res[run_id-1].pax_exp.EXPECTED_WT
-    ave_wt = 0 if ret.mu.sum() == 0 else ret.ACTUAL_WT.sum()/ret.mu.sum()
-    ret['EXPECTED_WT'] = (1-params.d2d.pax_omega)*pre_exp_wt + params.d2d.pax_omega*ret.mu*ret.ACTUAL_WT+ \
-                           params.d2d.pax_omega*(1-ret.mu)*ave_wt
+    # pre_exp_wt = params.d2d.ini_exp_wt if run_id == 0 else sim.res[run_id-1].pax_exp.EXPECTED_WT
+    # ave_wt = 0 if ret.mu.sum() == 0 else ret.ACTUAL_WT.sum()/ret.mu.sum()
+    # ret['EXPECTED_WT'] = (1-params.d2d.pax_omega)*pre_exp_wt + params.d2d.pax_omega*ret.mu*ret.ACTUAL_WT+ \
+    #                        params.d2d.pax_omega*(1-ret.mu)*ave_wt
     # Arjan------------------------------------------------------------------------------------------------------------ #
     # ret['pre_exp_wt'] = params.d2d.ini_exp_wt if run_id == 0 else sim.res[run_id-1].pax_exp.EXPECTED_WT
     # ret['EXPECTED_WT'] = ret.apply(lambda row: row['pre_exp_wt'] if row['mu']==0 or sim.pax[row.name].pax.get('learning','on')=='off' else (1-(row['nDAYS_HAILED']+1)**(-(params.d2d.kappa)))*row['pre_exp_wt'] + ((row['nDAYS_HAILED']+1)**(-(params.d2d.kappa)))*row['ACTUAL_WT'], axis=1)                                    
-    # ----------------------------------------------------------------------------------------------------------------- #
+    # ==================================================================================================================#
+    # Rafal & Farnoud (2022)
+    
+    ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].pax_exp.INFORMED
+    #-------------------------------------------------------
+    """ Utility gained through experience"""
+    
+    ret['pre_EXPERIENCE_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.EXPERIENCE_U
+    
+    ret['rh_U'] = ret.apply(lambda row: rh_U_func(row, sim), axis=1)
+    ret['alt_U'] = ret.apply(lambda row: alt_U_func(row, sim), axis=1)
+    
+    if run_id == 0:
+        ret['pre_rh_U'] = ret['alt_U']
+    else:
+        pax_exp = sim.res[run_id-1].pax_exp
+        ret['pre_rh_U'] = ret.apply(lambda row: pax_exp.pre_rh_U[row.name] if pax_exp.mu[row.name] == 0 else pax_exp.rh_U[row.name], axis=1)
+    
+    ret['U_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['pre_rh_U']-row['rh_U'])/abs(row['alt_U']), axis=1)
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+row.U_dif))), axis=1)
+    #--------------------------------------------------------
+    """ Utility gained through marketing"""
 
-    ret = ret[['ACTUAL_WT', 'EXPECTED_WT', 'OUT','mu','nDAYS_HAILED'] + [_.name for _ in travellerEvent]]
+    ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
+    ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
+    retx = ret.sample(int(params.d2d.diffusion_speed*params.nP))
+    retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
+    retx['INFORMED'] = True
+    ret.update(retx)
+    #--------------------------------------------------------
+    """ Utility gained through Word of Mouth (WOM)"""
+    
+    # print(ret.INFORMED)
+    ret['pre_WOM_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.WOM_U
+    ret['WOM_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.WOM_U
+
+    p_list = [p for p in range(0, params.nP)]
+    tuples = []
+    for p in range(0, params.nP):
+        if p in p_list:
+            p_list.remove(p)
+            interlocutor = random.choice(p_list)
+            p_list.remove(interlocutor)
+            tuples.append((p,interlocutor))
+            
+    # print(tuples)
+    for tup in tuples:
+        p1 = tup[0]
+        p2 = tup[1]
+        ret['WOM_U'].loc[p1] = 1/(1+math.exp(params.d2d.learning_d*(ln((1/ret['pre_WOM_U'].loc[p1])-1)+ret['pre_WOM_U'].loc[p1]-sim.pax[p2].pax.rh_U)))
+        ret['WOM_U'].loc[p2] = 1/(1+math.exp(params.d2d.learning_d*(ln((1/ret['pre_WOM_U'].loc[p2])-1)+ret['pre_WOM_U'].loc[p2]-sim.pax[p1].pax.rh_U)))
+        if (ret['INFORMED'].loc[p1] == False and ret['INFORMED'].loc[p2] == True) | (ret['INFORMED'].loc[p2] == False and ret['INFORMED'].loc[p1] == True):
+            ret['INFORMED'].loc[p1] = True
+            ret['INFORMED'].loc[p2] = True
+    
+    
+    # ================================================================================================= #
+
+    ret = ret[['pre_rh_U','rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
+               'MARKETING_U','WOM_U','INFORMED'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])
@@ -332,12 +384,24 @@ def d2d_kpi_pax(*args,**kwargs):
     return {'pax_exp': ret, 'pax_kpi': kpi}
 
 
+def rh_U_func(row, sim):
 
+    params = sim.params
+    req = sim.pax[row.name].request
+    plat = sim.platforms.loc[1]
+    rh_fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
+    rh_U = -params.d2d.B_fare*rh_fare -params.d2d.B_inveh_time*req.ttrav.total_seconds()/3600-params.d2d.B_exp_time*row.ACTUAL_WT/60 
+    return rh_U
 
+def alt_U_func(row, sim):
 
-
-
-
+    params = sim.params
+    req = sim.pax[row.name].request
+    plat = sim.platforms.loc[1]
+    inveh_time = (req.dist/params.PT_speed)/3600
+    alt_fare = params.PT_fare*req.dist/1000
+    alt_U = -params.d2d.B_fare*alt_fare -params.d2d.B_inveh_time*inveh_time- params.d2d.B_exp_time*inveh_time*0.05
+    return alt_U
 
 
 
