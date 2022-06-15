@@ -47,8 +47,7 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     veh.veh.working_U = working_U
     
     if params.d2d.probabilistic:
-        s = 20
-        working_P = (math.exp(s*working_U))/(math.exp(s*working_U) + math.exp(s*not_working_U))
+        working_P = (math.exp(params.d2d.m*working_U))/(math.exp(params.d2d.m*working_U) + math.exp(params.d2d.m*not_working_U))
         # print('working_p= ',working_P)
         sim.driver_p.append(working_P)
         return bool(working_P < random.uniform(0,1))
@@ -72,8 +71,7 @@ def S_traveller_opt_out(pax, **kwargs):
     
     pax.pax.rh_U = rh_U
     if params.d2d.probabilistic:
-        s = 20
-        rh_P = (math.exp(s*rh_U))/(math.exp(s*rh_U)+math.exp(s*alt_U))
+        rh_P = (math.exp(params.d2d.m*rh_U))/(math.exp(params.d2d.m*rh_U)+math.exp(params.d2d.m*alt_U))
         # sim.traveller_p.append(rh_P)
         return bool(rh_P < random.uniform(0,1))
     else:
@@ -190,14 +188,7 @@ def d2d_kpi_veh(*args,**kwargs):
     """ Utility gained through experience"""
 
     ret['pre_EXPERIENCE_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
-    
-    if run_id == 0:
-        ret['pre_ACTUAL_INC'] = params.d2d.res_wage
-    else:
-        veh_exp = sim.res[run_id-1].veh_exp
-        ret['pre_ACTUAL_INC'] = ret.apply(lambda row: veh_exp.pre_ACTUAL_INC[row.name] if veh_exp.mu[row.name] == 0 else veh_exp.ACTUAL_INC[row.name], axis=1)
-    
-    ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['pre_ACTUAL_INC']-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
+    ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
     ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+row.inc_dif))), axis=1)
     #--------------------------------------------------------
     """ Utility gained through marketing"""
@@ -237,7 +228,7 @@ def d2d_kpi_veh(*args,**kwargs):
     
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'DRIVING_DIST', 'REVENUE',
                'COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu','INFORMED',
-               'EXPERIENCE_U','MARKETING_U','WOM_U','pre_ACTUAL_INC'] + [_.name for _ in driverEvent]]
+               'EXPERIENCE_U','MARKETING_U','WOM_U'] + [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
     # KPIs
@@ -325,17 +316,9 @@ def d2d_kpi_pax(*args,**kwargs):
     """ Utility gained through experience"""
     
     ret['pre_EXPERIENCE_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.EXPERIENCE_U
-    
     ret['rh_U'] = ret.apply(lambda row: rh_U_func(row, sim), axis=1)
     ret['alt_U'] = ret.apply(lambda row: alt_U_func(row, sim), axis=1)
-    
-    if run_id == 0:
-        ret['pre_rh_U'] = ret['alt_U']
-    else:
-        pax_exp = sim.res[run_id-1].pax_exp
-        ret['pre_rh_U'] = ret.apply(lambda row: pax_exp.pre_rh_U[row.name] if pax_exp.mu[row.name] == 0 else pax_exp.rh_U[row.name], axis=1)
-    
-    ret['U_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['pre_rh_U']-row['rh_U'])/abs(row['alt_U']), axis=1)
+    ret['U_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['alt_U']-row['rh_U'])/abs(row['alt_U']), axis=1)
     ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+row.U_dif))), axis=1)
     #--------------------------------------------------------
     """ Utility gained through marketing"""
@@ -375,7 +358,7 @@ def d2d_kpi_pax(*args,**kwargs):
     
     # ================================================================================================= #
 
-    ret = ret[['pre_rh_U','rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
+    ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
                'MARKETING_U','WOM_U','INFORMED'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
@@ -400,7 +383,7 @@ def alt_U_func(row, sim):
     plat = sim.platforms.loc[1]
     inveh_time = (req.dist/params.PT_speed)/3600
     alt_fare = params.PT_fare*req.dist/1000
-    alt_U = -params.d2d.B_fare*alt_fare -params.d2d.B_inveh_time*inveh_time- params.d2d.B_exp_time*inveh_time*0.05
+    alt_U = -params.d2d.B_fare*alt_fare -params.d2d.B_inveh_time*inveh_time- params.d2d.B_exp_time*inveh_time*0.25
     return alt_U
 
 
@@ -467,3 +450,10 @@ def exp_income(sim):
 #         return True
 #     else:
 #         return False
+
+    
+    # if run_id == 0:
+    #     ret['pre_rh_U'] = ret['alt_U']
+    # else:
+    #     pax_exp = sim.res[run_id-1].pax_exp
+    #     ret['pre_rh_U'] = ret.apply(lambda row: pax_exp.pre_rh_U[row.name] if pax_exp.mu[row.name] == 0 else pax_exp.rh_U[row.name], axis=1)
