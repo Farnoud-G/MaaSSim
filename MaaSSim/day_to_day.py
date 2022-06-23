@@ -37,12 +37,12 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     if informed==False:
         return True
     
-    EXPERIENCE_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.EXPERIENCE_U.loc[veh.id]
+    EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.EXPERIENCE_U.loc[veh.id]
     MARKETING_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.MARKETING_U.loc[veh.id]
     WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.WOM_U.loc[veh.id]
     
     working_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
-    not_working_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    not_working_U = params.d2d.B_Experience*0 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     # print('veh id ', veh.id,'U= ',  working_U)
     veh.veh.working_U = working_U
     
@@ -62,12 +62,12 @@ def S_traveller_opt_out(pax, **kwargs):
     if informed==False:
         return True
     
-    EXPERIENCE_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPERIENCE_U.loc[pax.id]
+    EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPERIENCE_U.loc[pax.id]
     MARKETING_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.MARKETING_U.loc[pax.id]
     WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.WOM_U.loc[pax.id]
     
     rh_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
-    alt_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    alt_U = params.d2d.B_Experience*0 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     
     pax.pax.rh_U = rh_U
     if params.d2d.probabilistic:
@@ -187,9 +187,9 @@ def d2d_kpi_veh(*args,**kwargs):
     #-------------------------------------------------------
     """ Utility gained through experience"""
 
-    ret['pre_EXPERIENCE_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
+    ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
     ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
-    ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+row.inc_dif))), axis=1)
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), axis=1)
     #--------------------------------------------------------
     """ Utility gained through marketing"""
 
@@ -315,11 +315,12 @@ def d2d_kpi_pax(*args,**kwargs):
     #-------------------------------------------------------
     """ Utility gained through experience"""
     
-    ret['pre_EXPERIENCE_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.EXPERIENCE_U
+    ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].pax_exp.EXPERIENCE_U
     ret['rh_U'] = ret.apply(lambda row: rh_U_func(row, sim), axis=1)
     ret['alt_U'] = ret.apply(lambda row: alt_U_func(row, sim), axis=1)
     ret['U_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['alt_U']-row['rh_U'])/abs(row['alt_U']), axis=1)
-    ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+row.U_dif))), axis=1)
+    
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.U_dif))), axis=1)
     #--------------------------------------------------------
     """ Utility gained through marketing"""
 
@@ -457,3 +458,17 @@ def exp_income(sim):
     # else:
     #     pax_exp = sim.res[run_id-1].pax_exp
     #     ret['pre_rh_U'] = ret.apply(lambda row: pax_exp.pre_rh_U[row.name] if pax_exp.mu[row.name] == 0 else pax_exp.rh_U[row.name], axis=1)
+    
+    
+def PT_utility(requests,params):
+    if 'walkDistance' in requests.columns:
+        requests = requests
+        walk_factor = 2
+        wait_factor = 2
+        transfer_penalty = 500
+        requests['PT_fare'] = 1 + requests.transitTime * params.avg_speed/1000 * 0.175
+        requests['u_PT'] = requests['PT_fare'] + \
+                           requests.VoT * (walk_factor * requests.walkDistance / params.speeds.walk +
+                                           wait_factor * requests.waitingTime +
+                                           transfer_penalty * requests.transfers + requests.transitTime)
+    return requests
