@@ -96,14 +96,15 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         from MaaSSim.utils import make_config_paths
         params = make_config_paths(params, main = kwargs.get('make_main_path',False), rel = True)
 
-    if params.paths.get('requests', False):
-        inData = read_requests_csv(inData, path=params.paths.requests)
-
     if params.paths.get('vehicles', False):
         inData = read_vehicle_positions(inData, path=params.paths.vehicles)
 
     if len(inData.G) == 0:  # only if no graph in input
         inData = load_G(inData, params, stats=True)  # download graph for the 'params.city' and calc the skim matrices
+        
+    if params.paths.get('requests', False):
+        inData = read_requests_csv(inData, params, path=params.paths.requests)
+        
     if len(inData.passengers) == 0:  # only if no passengers in input
         inData = generate_demand(inData, params, avg_speed=True)
     if len(inData.vehicles) == 0:  # only if no vehicles in input
@@ -114,17 +115,18 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         # inData.platforms.fare = [1]
         inData.platforms = generate_platforms(inData, params, params.get('nPM', 1))
 
-
     inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
-
 
     sim = Simulator(inData, params=params, **kwargs)  # initialize
     
-    if params.d2d.heterogeneous:
-        print('res_wage_eps mean = ',sim.inData.vehicles.res_wage_eps.mean())
-        print('exp_income_eps mean = ',sim.inData.vehicles.exp_income_eps.mean())
-    
     for day in range(params.get('nD', 1)):  # run iterations
+        
+        #Strategy============================================================
+        # if day > 50:
+        #     params.platforms.comm_rate = 0.1
+        #     params.platforms.fare = 1.21 #euro/km
+        
+        #====================================================================
         sim.make_and_run(run_id=day)  # prepare and SIM
         sim.output()  # calc results
 

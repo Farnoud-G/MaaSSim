@@ -42,7 +42,7 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.WOM_U.loc[veh.id]
     
     working_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
-    not_working_U = params.d2d.B_Experience*0 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    not_working_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     # print('veh id ', veh.id,'U= ',  working_U)
     veh.veh.working_U = working_U
     
@@ -62,12 +62,12 @@ def S_traveller_opt_out(pax, **kwargs):
     if informed==False:
         return True
     
-    EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPERIENCE_U.loc[pax.id]
+    EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPERIENCE_U.loc[pax.id]    
     MARKETING_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.MARKETING_U.loc[pax.id]
     WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.WOM_U.loc[pax.id]
     
     rh_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
-    alt_U = params.d2d.B_Experience*0 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    alt_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     
     pax.pax.rh_U = rh_U
     if params.d2d.probabilistic:
@@ -89,8 +89,6 @@ def traveller_opt_out(pax, **kwargs):
     plat = sim.platforms.loc[1]
     rh_fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
     ASC = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.COMMISSION.sum()/10000
-    # if pax.id == 1:
-    #     print('ASC = ', ASC)
     
     rh_U = -params.d2d.get('B_fare',1)*rh_fare -params.d2d.get('B_inveh_time',1)*req.ttrav.total_seconds()/3600-params.d2d.get('B_exp_time',1)*exp_wait_t/60 + ASC + pax.pax.get('exp_utility_eps', 0)
     
@@ -190,13 +188,14 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
     ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
     ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), axis=1)
+    
     #--------------------------------------------------------
     """ Utility gained through marketing"""
 
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
-    retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
+    retx['MARKETING_U'] = retx.apply(lambda row: max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), 1e-200), axis=1)
     retx['INFORMED'] = True
     ret.update(retx)
     #--------------------------------------------------------
@@ -207,14 +206,16 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['WOM_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.WOM_U
     
     v_list = [v for v in range(1, params.nV+1)]
+    selected_v = random.sample(v_list, int(params.d2d.diffusion_speed*params.nV))
     tuples = []
-    for v in range(1, params.nV+1):
+    # for v in range(1, params.nV+1):
+    for v in selected_v:
         if v in v_list:
             v_list.remove(v)
             interlocutor = random.choice(v_list)
             v_list.remove(interlocutor)
             tuples.append((v,interlocutor))
-            
+    
     for tup in tuples:
         v1 = tup[0]
         v2 = tup[1]
@@ -234,30 +235,15 @@ def d2d_kpi_veh(*args,**kwargs):
     # KPIs
     kpi = ret.agg(['sum', 'mean', 'std'])
     kpi['nV'] = ret.shape[0]
-    return {'veh_exp': ret, 'veh_kpi': kpi}
     
+    #---------------------------------------------------------------------------------------
+    plats = sim.platforms
+    plats['profit'] = ret.COMMISSION.sum()
     
-
-def update_learning_status(sim, ret):
+    #---------------------------------------------------------------------------------------
     
-    if len(sim.runs) > 3: # stationarity test needs at least 4 values.
-        f = pd.DataFrame()
-        for run_id in range(0,len(sim.runs)-1):
-            f['{}'.format(run_id)] = sim.res[run_id].veh_exp['ACTUAL_INC']
-        #we can't add the last day's ACTUAL_INC from res, since it is not calculated yet.
-        f['{}'.format(len(sim.runs)-1)] = ret['ACTUAL_INC']
-        for veh in f.index:
-            if sim.vehs[veh].veh['learning'] == 'on':
-                a = f.loc[veh]
-                a = [_ for _ in a if _ != 0]
-                if len(a) > 3:
-                    adf = adfuller(a)
-                    # if adf[0] < 0.05:
-                    if adf[0] < adf[4]["5%"]:
-                        sim.vehicles.at[veh,'learning'] = 'off'
-                        print('vehid ',veh)
-                        print('day----------------------------',len(sim.runs))
-    return sim
+    return {'veh_exp': ret, 'veh_kpi': kpi, 'platform':plats}
+    
     
     
 ################################################################################################################
@@ -271,6 +257,7 @@ def d2d_kpi_pax(*args,**kwargs):
     simrun = sim.runs[run_id]
     paxindex = sim.inData.passengers.index
     df = simrun['trips'].copy()  # results of previous simulation
+    unfulfilled_requests = list(df[df['event']=='LOSES_PATIENCE'].pax)
     PREFERS_OTHER_SERVICE = df[df.event == travellerEvent.PREFERS_OTHER_SERVICE.name].pax  # track drivers out
     dfs = df.shift(-1)  # to map time periods between events
     dfs.columns = [_ + "_s" for _ in df.columns]  # columns with _s are shifted
@@ -316,11 +303,12 @@ def d2d_kpi_pax(*args,**kwargs):
     """ Utility gained through experience"""
     
     ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].pax_exp.EXPERIENCE_U
-    ret['rh_U'] = ret.apply(lambda row: rh_U_func(row, sim), axis=1)
-    ret['alt_U'] = ret.apply(lambda row: alt_U_func(row, sim), axis=1)
+    ret['rh_U'] = ret.apply(lambda row: rh_U_func(row, sim, unfulfilled_requests), axis=1)
+    ret['alt_U'] = ret.apply(lambda row: sim.pax[row.name].pax.u_PT, axis=1)
     ret['U_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['alt_U']-row['rh_U'])/abs(row['alt_U']), axis=1)
     
-    ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.U_dif))), axis=1)
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.U_dif))), 1e-200), axis=1)
+    
     #--------------------------------------------------------
     """ Utility gained through marketing"""
 
@@ -338,15 +326,16 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['WOM_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.WOM_U
 
     p_list = [p for p in range(0, params.nP)]
+    selected_p = random.sample(p_list, int(params.d2d.diffusion_speed*params.nP))
     tuples = []
-    for p in range(0, params.nP):
+    # for p in range(0, params.nP):
+    for p in selected_p:
         if p in p_list:
             p_list.remove(p)
             interlocutor = random.choice(p_list)
             p_list.remove(interlocutor)
             tuples.append((p,interlocutor))
-            
-    # print(tuples)
+
     for tup in tuples:
         p1 = tup[0]
         p2 = tup[1]
@@ -368,13 +357,17 @@ def d2d_kpi_pax(*args,**kwargs):
     return {'pax_exp': ret, 'pax_kpi': kpi}
 
 
-def rh_U_func(row, sim):
+def rh_U_func(row, sim, unfulfilled_requests):
 
     params = sim.params
     req = sim.pax[row.name].request
     plat = sim.platforms.loc[1]
+    if row.name in unfulfilled_requests:
+        hate = 1
+    else:
+        hate = 0
     rh_fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
-    rh_U = -params.d2d.B_fare*rh_fare -params.d2d.B_inveh_time*req.ttrav.total_seconds()/3600-params.d2d.B_exp_time*row.ACTUAL_WT/60 
+    rh_U = -(1+hate)*(rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
     return rh_U
 
 def alt_U_func(row, sim):
@@ -387,23 +380,18 @@ def alt_U_func(row, sim):
     alt_U = -params.d2d.B_fare*alt_fare -params.d2d.B_inveh_time*inveh_time- params.d2d.B_exp_time*inveh_time*0.25
     return alt_U
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def PT_utility(requests,params):
+    if 'walkDistance' in requests.columns:
+        requests = requests
+        walk_factor = 2
+        wait_factor = 2
+        transfer_penalty = 500
+        requests['PT_fare'] = 1 + requests.transitTime * params.avg_speed/1000 * 0.175
+        requests['u_PT'] = requests['PT_fare'] + \
+                           requests.VoT * (walk_factor * requests.walkDistance / params.speeds.walk +
+                                           wait_factor * requests.waitingTime +
+                                           transfer_penalty * requests.transfers + requests.transitTime)
+    return requests
 
 
 
@@ -415,25 +403,30 @@ def my_function(veh, **kwargs): # user defined function to represent agent decis
     else:
         return False
     
+
+def update_learning_status(sim, ret):
     
+    if len(sim.runs) > 3: # stationarity test needs at least 4 values.
+        f = pd.DataFrame()
+        for run_id in range(0,len(sim.runs)-1):
+            f['{}'.format(run_id)] = sim.res[run_id].veh_exp['ACTUAL_INC']
+        #we can't add the last day's ACTUAL_INC from res, since it is not calculated yet.
+        f['{}'.format(len(sim.runs)-1)] = ret['ACTUAL_INC']
+        for veh in f.index:
+            if sim.vehs[veh].veh['learning'] == 'on':
+                a = f.loc[veh]
+                a = [_ for _ in a if _ != 0]
+                if len(a) > 3:
+                    adf = adfuller(a)
+                    # if adf[0] < 0.05:
+                    if adf[0] < adf[4]["5%"]:
+                        sim.vehicles.at[veh,'learning'] = 'off'
+                        print('vehid ',veh)
+                        print('day----------------------------',len(sim.runs))
+    return sim
+
 #sim.logger.info("Heyyoooooooooooooooooooooooooooooooooooooooo")
 # df = df[df['event'].isin(['IS_ACCEPTED_BY_TRAVELLER', 'ARRIVES_AT_PICKUP', 'DEPARTS_FROM_PICKUP'])] 
-
-def exp_income(sim):
-    params = sim.params 
-    run_id = sim.run_ids[-1]
-    act_income = sim.res[run_id].veh_exp.PROFIT
-    mu = sim.res[run_id].veh_exp.mu
-    if mu.sum() == 0:
-        ave_income = 0
-    else:
-        ave_income = act_income.sum()/mu.sum()
-    # update the expected_income
-    sim.inData.vehicles.expected_income = (1-params.d2d.omega)*sim.inData.vehicles.expected_income +\
-                                              params.d2d.omega*mu*act_income + \
-                                              params.d2d.omega*(1-mu)*ave_income
-    sim.income.expected['run {}'.format(run_id+1)] = sim.inData.vehicles.expected_income.copy()
-    sim.income.actual['run {}'.format(run_id)] = act_income.copy()
     
     
     
@@ -460,15 +453,3 @@ def exp_income(sim):
     #     ret['pre_rh_U'] = ret.apply(lambda row: pax_exp.pre_rh_U[row.name] if pax_exp.mu[row.name] == 0 else pax_exp.rh_U[row.name], axis=1)
     
     
-def PT_utility(requests,params):
-    if 'walkDistance' in requests.columns:
-        requests = requests
-        walk_factor = 2
-        wait_factor = 2
-        transfer_penalty = 500
-        requests['PT_fare'] = 1 + requests.transitTime * params.avg_speed/1000 * 0.175
-        requests['u_PT'] = requests['PT_fare'] + \
-                           requests.VoT * (walk_factor * requests.walkDistance / params.speeds.walk +
-                                           wait_factor * requests.waitingTime +
-                                           transfer_penalty * requests.transfers + requests.transitTime)
-    return requests

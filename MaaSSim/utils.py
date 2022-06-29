@@ -244,18 +244,76 @@ def generate_demand(_inData, _params=None, avg_speed=False):
 
     return _inData
 
+def PT_utility(requests,params): #f#
+    if 'walkDistance' in requests.columns:
+        requests = requests
+        walk_factor = 2
+        wait_factor = 2
+        transfer_penalty = 500
+        requests['PT_fare'] = 1 + requests.transitTime * params.PT_avg_speed/1000 * 0.175
+        requests['u_PT'] = -(requests['PT_fare'] + \
+                           (params.VoT/3600) * (walk_factor * requests.walkDistance / params.speeds.walk +
+                                           wait_factor * requests.waitingTime +
+                                           transfer_penalty * requests.transfers + requests.transitTime))
+    return requests
 
-def read_requests_csv(inData, path):
-    from MaaSSim.data_structures import structures
-    inData.requests = pd.read_csv(path, index_col=1)
-    inData.requests.treq = pd.to_datetime(inData.requests.treq)
-    inData.requests['pax_id'] = inData.requests.index.copy()
-    inData.requests.ttrav = pd.to_timedelta(inData.requests.ttrav)
-    inData.passengers = pd.DataFrame(index=inData.requests.index, columns=structures.passengers.columns)
-    inData.passengers['pax_id'] = inData.passengers.index.copy()
-    inData.passengers.pos = inData.requests.origin.copy()
-    inData.passengers.platforms = inData.passengers.platforms.apply(lambda x: [0])
-    return inData
+def read_requests_csv(_inData,_params, path): #f#
+    print('This simulation uses albatros data')
+    from .data_structures import structures
+    try:
+        _params.t0 = pd.to_datetime(_params.t0)
+    except:
+        pass
+    
+    df = pd.read_csv(path)
+    df = df[df.dist>_params.dist_threshold_min]
+    df = df.sample(_params.nP, random_state=2, replace= True)
+    
+    df = PT_utility(df,_params)
+    df.reset_index(inplace=True)
+    del df['index']
+    
+    _inData.passengers = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
+    _inData.passengers['rh_U'] = 0.5
+    requests = pd.DataFrame(index=_inData.passengers.index, columns=_inData.requests.columns)
+    requests.pax_id = _inData.passengers.index
+    requests.ride_id = _inData.passengers.index
+    requests.origin = df.origin
+    requests.destination = df.destination
+    requests['u_PT'] = df['u_PT']
+
+    if _params.demand_structure.temporal_distribution == 'uniform':
+        treq = np.random.uniform(-_params.simTime * 60 * 60 / 2, _params.simTime * 60 * 60 / 2,
+                                 _params.nP)  # apply uniform distribution on request times
+        
+    requests.treq = [_params.t0 + pd.Timedelta(int(_), 's') for _ in treq]
+    requests['dist'] = requests.apply(lambda request: _inData.skim.loc[request.origin, request.destination], axis=1)
+    requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist/_params.speeds.ride, 's').floor('s'), axis=1)
+    requests.tarr = [request.treq + request.ttrav for _, request in requests.iterrows()]
+    requests = requests.sort_values('treq')
+    requests.shareable = False
+    _inData.requests = requests
+    
+    _inData.passengers['pax_id'] = _inData.passengers.index.copy()
+    _inData.passengers.pos = _inData.requests.origin.copy()
+    _inData.passengers['u_PT'] = _inData.requests.u_PT.copy()
+    
+    _inData.passengers.platforms = _inData.passengers.platforms.apply(lambda x: [1])
+    
+    return _inData
+
+
+# def read_requests_csv(inData, path):
+#     from MaaSSim.data_structures import structures
+#     inData.requests = pd.read_csv(path, index_col=1)
+#     inData.requests.treq = pd.to_datetime(inData.requests.treq)
+#     inData.requests['pax_id'] = inData.requests.index.copy()
+#     inData.requests.ttrav = pd.to_timedelta(inData.requests.ttrav)
+#     inData.passengers = pd.DataFrame(index=inData.requests.index, columns=structures.passengers.columns)
+#     inData.passengers['pax_id'] = inData.passengers.index.copy()
+#     inData.passengers.pos = inData.requests.origin.copy()
+#     inData.passengers.platforms = inData.passengers.platforms.apply(lambda x: [0])
+#     return inData
 
 def read_vehicle_positions(inData, path):
     inData.vehicles = pd.read_csv(path, index_col=0)
