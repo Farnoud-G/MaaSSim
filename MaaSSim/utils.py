@@ -264,7 +264,7 @@ def read_requests_csv(_inData,_params, path): #f#
         
     requests.treq = [_params.t0 + pd.Timedelta(int(_), 's') for _ in treq]
     requests['dist'] = requests.apply(lambda request: _inData.skim.loc[request.origin, request.destination], axis=1)
-    requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist, 's').floor('s'), axis=1)
+    requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist/_params.speeds.ride, 's').floor('s'), axis=1)    
     requests.tarr = [request.treq + request.ttrav for _, request in requests.iterrows()]
     requests = requests.sort_values('treq')
     requests.shareable = False
