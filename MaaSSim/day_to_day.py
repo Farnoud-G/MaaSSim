@@ -37,6 +37,14 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     if informed==False:
         return True
     
+    # self-supply -------------------------------------------
+    # if len(sim.res) < 201:
+    #     if veh.id<201:
+    #         return False
+    #     else:
+    #         return True
+    # ------------------------------------------------------
+    
     EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.EXPERIENCE_U.loc[veh.id]
     MARKETING_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.MARKETING_U.loc[veh.id]
     WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.WOM_U.loc[veh.id]
@@ -122,6 +130,7 @@ def d2d_kpi_veh(*args,**kwargs):
     """
     sim =  kwargs.get('sim', None)
     params = sim.params
+    platforms = sim.platforms
     run_id = kwargs.get('run_id', None)
     simrun = sim.runs[run_id]
     vehindex = sim.inData.vehicles.index
@@ -150,12 +159,12 @@ def d2d_kpi_veh(*args,**kwargs):
     
     d = df[df['event_s']=='ARRIVES_AT_DROPOFF']
     if len(d) != 0:
-        d['TRIP_FARE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare), axis=1)
+        d['TRIP_FARE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * platforms.loc[1].fare + platforms.loc[1].base_fare, platforms.loc[1].min_fare), axis=1)
         ret['TRIP_FARE'] = d.groupby(['veh']).sum().TRIP_FARE
     else:
         ret['TRIP_FARE'] = 0
-    ret['REVENUE'] = ret['TRIP_FARE']*(1-params.platforms.comm_rate)
-    ret['COMMISSION'] = ret['TRIP_FARE']*params.platforms.comm_rate
+    ret['REVENUE'] = ret['TRIP_FARE']*(1-platforms.loc[1].comm_rate)
+    ret['COMMISSION'] = ret['TRIP_FARE']*platforms.loc[1].comm_rate
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
     ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
@@ -187,7 +196,8 @@ def d2d_kpi_veh(*args,**kwargs):
 
     ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
     ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
-    ret['EXPERIENCE_U'] = ret.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), axis=1)
+    
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), 1e-200), axis=1)
     
     #--------------------------------------------------------
     """ Utility gained through marketing"""
@@ -195,7 +205,7 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
-    retx['MARKETING_U'] = retx.apply(lambda row: max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), 1e-200), axis=1)
+    retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
     retx['INFORMED'] = True
     ret.update(retx)
     #--------------------------------------------------------
@@ -237,12 +247,12 @@ def d2d_kpi_veh(*args,**kwargs):
     kpi['nV'] = ret.shape[0]
     
     #---------------------------------------------------------------------------------------
-    plats = sim.platforms
-    plats['profit'] = ret.COMMISSION.sum()
+    # plats = sim.platforms
+    # plats['profit'] = ret.COMMISSION.sum()
     
     #---------------------------------------------------------------------------------------
     
-    return {'veh_exp': ret, 'veh_kpi': kpi, 'platform':plats}
+    return {'veh_exp': ret, 'veh_kpi': kpi}
     
     
     

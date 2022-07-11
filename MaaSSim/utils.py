@@ -141,6 +141,7 @@ def generate_platforms(_inData, _params, nPM): #f#
     plats.fare = _params.platforms.fare
     plats['base_fare'] = _params.platforms.base_fare
     plats['min_fare'] = _params.platforms.min_fare
+    plats['comm_rate'] = _params.platforms.comm_rate
     return plats    
 
 

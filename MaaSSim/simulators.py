@@ -122,11 +122,16 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
     for day in range(params.get('nD', 1)):  # run iterations
         
         #Strategy============================================================
-        # if day > 50:
-        #     params.platforms.comm_rate = 0.1
-        #     params.platforms.fare = 1.21 #euro/km
-        
+        # if day==50:
+        #     sim.platforms.fare[1] = 2 #euro/km
+        #     sim.platforms.comm_rate[1] = 0.1
+        #     print('Strategy change')
+            
+        # if day==100:
+        #     sim.platforms.comm_rate[1] = 0.15
+        #     sim.platforms.fare[1] = 2 #euro/km           
         #====================================================================
+        
         sim.make_and_run(run_id=day)  # prepare and SIM
         sim.output()  # calc results
 
