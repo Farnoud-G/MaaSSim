@@ -151,8 +151,10 @@ def d2d_kpi_veh(*args,**kwargs):
         if status.name not in ret.columns:
             ret[status.name] = 0
     DECIDES_NOT_TO_DRIVE.index = DECIDES_NOT_TO_DRIVE.values
+    ret['IDLE_TIME'] = ret.RECEIVES_REQUEST + ret.ENDS_SHIFT
     ret['OUT'] = DECIDES_NOT_TO_DRIVE
     ret['OUT'] = ~ret['OUT'].isnull()
+    ret['PICKUP_DIST'] = ret.ARRIVES_AT_PICKUP*(params.speeds.ride/1000)  # in km
     ret['DRIVING_TIME'] = ret.ARRIVES_AT_PICKUP + ret.ARRIVES_AT_DROPOFF
     ret['DRIVING_DIST'] = ret['DRIVING_TIME']*(params.speeds.ride/1000)  #here we assume the speed is constant on the network
     # ret['REVENUE'] = (ret.ARRIVES_AT_DROPOFF * (params.speeds.ride/1000) * params.platforms.fare).add(params.platforms.base_fare * ret.nRIDES) * (1-params.platforms.comm_rate)
@@ -164,7 +166,7 @@ def d2d_kpi_veh(*args,**kwargs):
     else:
         ret['TRIP_FARE'] = 0
     ret['REVENUE'] = ret['TRIP_FARE']*(1-platforms.loc[1].comm_rate)
-    ret['COMMISSION'] = ret['TRIP_FARE']*platforms.loc[1].comm_rate
+    ret['COMMISSION'] = ret['TRIP_FARE']*(platforms.loc[1].comm_rate)#-params.platforms.discount)
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
     ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
@@ -197,17 +199,19 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
     ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
     
-    ret['EXPERIENCE_U'] = ret.apply(lambda row: max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), 1e-200), axis=1)
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), 1e-2)), axis=1)
     
     #--------------------------------------------------------
     """ Utility gained through marketing"""
 
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
-    retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
-    retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
-    retx['INFORMED'] = True
-    ret.update(retx)
+    
+    if len(sim.res) in range(50, 100):
+        retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
+        retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
+        retx['INFORMED'] = True
+        ret.update(retx)
     #--------------------------------------------------------
     """ Utility gained through Word of Mouth (WOM)"""
     
@@ -237,9 +241,9 @@ def d2d_kpi_veh(*args,**kwargs):
     
     #===================================================================
     
-    ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'DRIVING_DIST', 'REVENUE',
-               'COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu','INFORMED',
-               'EXPERIENCE_U','MARKETING_U','WOM_U'] + [_.name for _ in driverEvent]]
+    ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'IDLE_TIME', 'PICKUP_DIST', 'DRIVING_DIST',
+               'REVENUE','COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu','INFORMED','EXPERIENCE_U',
+               'MARKETING_U','WOM_U'] + [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
     # KPIs
@@ -293,6 +297,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['nDAYS_HAILED'] = ret['mu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_HAILED + ret['mu']
     ret['TRAVEL'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
     ret['ACTUAL_WT'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
+    ret['MATCHING_T'] = (ret['RECEIVES_OFFER'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['OPERATIONS'] = ret['ACCEPTS_OFFER'] + ret['DEPARTS_FROM_PICKUP'] + ret['SETS_OFF_FOR_DEST']
     ret.fillna(0, inplace=True)
     
@@ -308,26 +313,29 @@ def d2d_kpi_pax(*args,**kwargs):
     # ==================================================================================================================#
     # Rafal & Farnoud (2022)
     
+    ret['plat_profit'] = float('nan')
     ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].pax_exp.INFORMED
     #-------------------------------------------------------
     """ Utility gained through experience"""
     
     ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].pax_exp.EXPERIENCE_U
-    ret['rh_U'] = ret.apply(lambda row: rh_U_func(row, sim, unfulfilled_requests), axis=1)
+    ret['rh_U'] = ret.apply(lambda row: rh_U_func(row, sim, unfulfilled_requests, ret), axis=1)
     ret['alt_U'] = ret.apply(lambda row: sim.pax[row.name].pax.u_PT, axis=1)
     ret['U_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['alt_U']-row['rh_U'])/abs(row['alt_U']), axis=1)
     
-    ret['EXPERIENCE_U'] = ret.apply(lambda row: max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.U_dif))), 1e-200), axis=1)
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.U_dif))), 1e-2)), axis=1)
     
     #--------------------------------------------------------
     """ Utility gained through marketing"""
 
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
-    retx = ret.sample(int(params.d2d.diffusion_speed*params.nP))
-    retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
-    retx['INFORMED'] = True
-    ret.update(retx)
+    
+    if len(sim.res) in range(50, 100):
+        retx = ret.sample(int(params.d2d.diffusion_speed*params.nP))
+        retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
+        retx['INFORMED'] = True
+        ret.update(retx)
     #--------------------------------------------------------
     """ Utility gained through Word of Mouth (WOM)"""
     
@@ -359,7 +367,7 @@ def d2d_kpi_pax(*args,**kwargs):
     # ================================================================================================= #
 
     ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
-               'MARKETING_U','WOM_U','INFORMED'] + [_.name for _ in travellerEvent]]
+               'MARKETING_U','WOM_U','INFORMED', 'plat_profit','MATCHING_T'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])
@@ -367,17 +375,27 @@ def d2d_kpi_pax(*args,**kwargs):
     return {'pax_exp': ret, 'pax_kpi': kpi}
 
 
-def rh_U_func(row, sim, unfulfilled_requests):
+def rh_U_func(row, sim, unfulfilled_requests, ret):
 
     params = sim.params
     req = sim.pax[row.name].request
     plat = sim.platforms.loc[1]
+    disc = 0
+    
+    if sim.pax[row.name].pax.rh_U < 0.5:
+        disc = params.platforms.discount
+    
     if row.name in unfulfilled_requests:
         hate = 1
     else:
         hate = 0
+
     rh_fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
-    rh_U = -(1+hate)*(rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
+    disc_rh_fare = (1-disc)*rh_fare
+    rh_U = -(1+hate)*(disc_rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
+    
+    ret.at[row.name, 'plat_profit'] = rh_fare*(sim.platforms.loc[1].comm_rate-disc) if ret.mu[row.name]==1 else 0
+
     return rh_U
 
 def alt_U_func(row, sim):
