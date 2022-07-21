@@ -165,7 +165,7 @@ def generate_vehicles(_inData, _params, nV):
     distances.columns = ['distance'] #f#
     distances = distances[distances['distance'] < _params.dist_threshold] #f#
     distances['weight'] =distances['distance'].apply(lambda x:math.exp(_params.demand_structure.origins_dispertion * x)) #f#
-    vehs.pos = list(distances.sample(_params.nV, weights='weight', replace=True).index) #f#
+    vehs.pos = list(distances.sample(_params.nV, random_state=1, weights='weight', replace=True).index) #f#
     # vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
 
     return vehs
