@@ -12,6 +12,8 @@ from numpy.random.mtrand import choice
 from MaaSSim.driver import driverEvent
 from MaaSSim.traveller import travellerEvent
 
+import h3
+
 
 #################
 #    DUMMIES    #
@@ -175,7 +177,41 @@ def f_match(**kwargs):
     vehQ = platform.vehQ  # queue of idle vehicles
     reqQ = platform.reqQ  # queue of unserved requests
     sim = platform.sim  # reference to the simulation object
+    
+    #f# Surge fee ----------------------------------------------------------
+    vehs = sim.vehicles.loc[vehQ]
+    pax = sim.passengers.loc[reqQ]
+    sdf = sim.inData.sdf   
+    sdf['demand'] = 0 
+    sdf['supply'] = 0 
+    
+    for index, row  in pax.iterrows():
+        lat = sim.inData.G.nodes[row.pos]['y']
+        lng = sim.inData.G.nodes[row.pos]['x']
 
+        add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
+
+        index = sdf[sdf.hex_address == add].index
+        sdf.at[index,'demand'] = sdf.loc[index].demand+1
+    
+    for index, row  in vehs.iterrows():
+        lat = sim.inData.G.nodes[row.pos]['y']
+        lng = sim.inData.G.nodes[row.pos]['x']
+
+        add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
+
+        index = sdf[sdf.hex_address == add].index
+        sdf.at[index,'supply'] = sdf.loc[index].supply+1
+
+    sdf['D/S'] = sdf.apply(lambda row: row['demand'] if row['supply']==0 else row['demand']/row['supply'],
+                           axis=1) 
+    sdf['surge_mp'] = 0 # surge function
+    
+    sim.concat_sdf = pd.concat([sim.concat_sdf, sdf])
+
+    # print(sdf)
+    #-----------------------------------------------------------------------
+    
     # print(reqQ,vehQ)
     while min(len(reqQ), len(vehQ)) > 0:  # loop until one of queues is empty (i.e. all requests handled)
         requests = sim.inData.requests.loc[reqQ]  # queued schedules of requests
@@ -219,6 +255,10 @@ def f_match(**kwargs):
                     ttrav = pax_request.ttrav
                 else:
                     ttrav = pax_request.ttrav.total_seconds()
+                
+                h3_add = h3.geo_to_h3(sim.inData.G.nodes[pax_request['origin']]['y'],
+                                      sim.inData.G.nodes[pax_request['origin']]['x'],sim.params.zoning_level) #f#
+                smp = sdf[sdf.hex_address == h3_add].surge_mp
                 offer = {'pax_id': i,
                          'req_id': pax_request.name,
                          'simpaxes': simpaxes,
@@ -227,7 +267,8 @@ def f_match(**kwargs):
                          'request': pax_request,
                          'wait_time': mintime,
                          'travel_time': ttrav,
-                         'fare': max(platform.platform.get('base_fare',0)+platform.platform.fare*sim.pax[i].request.dist /                                      1000, platform.platform.get('min_fare',0))}  # make an offer
+                         'fare': max(platform.platform.get('base_fare',0)+platform.platform.fare*sim.pax[i].request.dist /                                      1000, platform.platform.get('min_fare',0)),
+                         'surge_mp': smp[smp.index[0]]}  # make an offer
                 platform.offers[offer_id] = offer  # bookkeeping of offers made by platform
                 sim.pax[i].offers[platform.platform.name] = offer  # offer transferred to
                 sim.vehs[veh_id].offers[platform.platform.name] = offer  #f#

@@ -8,7 +8,7 @@
 from MaaSSim.maassim import Simulator
 from MaaSSim.shared import prep_shared_rides
 from MaaSSim.utils import get_config, load_G, generate_demand, generate_vehicles, initialize_df, empty_series, \
-    slice_space, read_requests_csv, read_vehicle_positions, generate_platforms
+    slice_space, read_requests_csv, read_vehicle_positions, generate_platforms, dynamic_paricing
 import pandas as pd
 from scipy.optimize import brute
 import logging
@@ -91,7 +91,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         from MaaSSim.data_structures import structures
         inData = structures.copy()  # fresh data
     if params is None:
-            params = get_config(config, root_path = kwargs.get('root_path'))  # load from .json file
+        params = get_config(config, root_path = kwargs.get('root_path'))  # load from .json file
     if kwargs.get('make_main_path',False):
         from MaaSSim.utils import make_config_paths
         params = make_config_paths(params, main = kwargs.get('make_main_path',False), rel = True)
@@ -101,6 +101,10 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
 
     if len(inData.G) == 0:  # only if no graph in input
         inData = load_G(inData, params, stats=True)  # download graph for the 'params.city' and calc the skim matrices
+        
+    if params.get('zoning_level', False):
+        inData = dynamic_paricing(inData, level=params.zoning_level)
+    
     if params.paths.get('requests', False):
         inData = read_requests_csv(inData, params, path=params.paths.requests)
         

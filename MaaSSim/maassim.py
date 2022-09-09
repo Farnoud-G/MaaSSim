@@ -72,6 +72,7 @@ class Simulator:
     def __init__(self, _inData, **kwargs):
         # input
         self.inData = _inData.copy()  # copy of data structure for simulations (copy needed for multi-threading)
+        self.concat_sdf = pd.DataFrame()
         self.vehicles = self.inData.vehicles  # input
         # if we want to restart vehicles everyday from fixed locations
         self.vehicle_fixed_positions = pd.Series(self.inData.vehicles.pos.values.copy(),

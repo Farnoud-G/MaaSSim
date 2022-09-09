@@ -15,6 +15,7 @@ from osmnx.distance import get_nearest_node
 import osmnx as ox
 import networkx as nx
 import json
+import h3
 
 from .traveller import travellerEvent
 from .driver import driverEvent
@@ -109,6 +110,24 @@ def load_G(_inData, _params=None, stats=True, set_t=True):
     _inData.skim = skim
     if stats:
         _inData.stats = networkstats(_inData)  # calculate center of network, radius and central node
+    return _inData
+
+def dynamic_paricing(_inData, level):
+    lat = []
+    lng = []
+    for i in _inData.G.nodes:
+        lat.append(_inData.G.nodes[i]['y'])
+        lng.append(_inData.G.nodes[i]['x'])
+
+    sdf = pd.DataFrame() # surge dataframe
+    sdf['lat'] = lat
+    sdf['lng'] = lng
+
+    # hex_col = 'hex'+str(level)
+    sdf['hex_address'] = sdf.apply(lambda x: h3.geo_to_h3(x.lat,x.lng,level),axis=1)
+    sdf = sdf.groupby(['hex_address']).size().to_frame('cnt').reset_index()
+    _inData.sdf = sdf
+    
     return _inData
 
 

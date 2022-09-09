@@ -165,8 +165,10 @@ def f_decline(veh, **kwargs):
     
     sim = veh.sim
     df = pd.DataFrame(veh.myrides)
-    ASC = 1.810                                                                                   #ASC    
-        
+    ASC = 1.810   #ASC    
+    surge = veh.offers[1]['surge_mp']
+    # print('veh_id', veh.id)
+    # print('surge= ',surge)
     d = veh.offers[1]['request']["origin"]                                                       #pickup_time
     o = veh.veh.pos
     pickup_time = veh.sim.skims.ride[o][d]/60  #minutes
