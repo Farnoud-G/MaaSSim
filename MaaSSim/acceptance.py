@@ -181,7 +181,7 @@ def f_decline(veh, **kwargs):
     waiting_time = (t - t0)/60 #minutes 
         
            
-    V = (ASC*1)+ (pickup_time*(-0.050)) + (waiting_time*(-0.017))
+    V = (ASC*1)+ (pickup_time*(-0.050)) + (waiting_time*(-0.017)) + (surge*0.101)
     
     acc_prob = (math.exp(V))/(1+math.exp(V))
 

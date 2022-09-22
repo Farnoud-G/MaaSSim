@@ -262,26 +262,35 @@ def generate_demand(_inData, _params=None, avg_speed=False):
 
 def read_requests_csv(_inData,_params, path): #f#
     from .data_structures import structures
-    try:
-        _params.t0 = pd.to_datetime(_params.t0)
-    except:
-        pass
+    # try:
+    #     _params.t0 = pd.to_datetime(_params.t0)
+    # except:
+    #     pass
     
+    _params.t0 = pd.to_datetime(_params.t0)
     df = pd.read_csv(path)
     df = df[df.dist>_params.dist_threshold_min]
-    df = df.sample(_params.nP, random_state=1, replace= True)
+    df.treq = df.apply(lambda row: pd.Timestamp(row.treq), axis=1)
+    df = df.loc[pd.Timestamp(_params.start_time)<df.treq]
+    df = df.loc[(_params.start_time < df.treq) & (df.treq < _params.end_time)]
+    
+    df = df.sample(_params.nP, random_state=3, replace= True)
     _inData.passengers = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
     requests = pd.DataFrame(index=_inData.passengers.index, columns=_inData.requests.columns)
     requests.pax_id = _inData.passengers.index
     requests.ride_id = _inData.passengers.index
     requests.origin = list(df.origin) #[1419265970, 46396602] #df.origin
     requests.destination = list(df.destination) #[46423397, 1686005089]#df.destination
+    
+    requests.treq = list(df.treq)
+    # requests.treq = requests.apply(lambda row: pd.Timestamp(row.treq), axis=1)
 
-    if _params.demand_structure.temporal_distribution == 'uniform':
-        treq = np.random.uniform(-_params.simTime * 60 * 60 / 2, _params.simTime * 60 * 60 / 2,
-                                 _params.nP)  # apply uniform distribution on request times
+
+#     if _params.demand_structure.temporal_distribution == 'uniform':
+#         treq = np.random.uniform(-_params.simTime * 60 * 60 / 2, _params.simTime * 60 * 60 / 2,
+#                                  _params.nP)  # apply uniform distribution on request times
         
-    requests.treq = [_params.t0 + pd.Timedelta(int(_), 's') for _ in treq]
+#     requests.treq = [_params.t0 + pd.Timedelta(int(_), 's') for _ in treq]
     requests['dist'] = requests.apply(lambda request: _inData.skim.loc[request.origin, request.destination], axis=1)
     requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist/_params.speeds.ride, 's').floor('s'), axis=1)    
     requests.tarr = [request.treq + request.ttrav for _, request in requests.iterrows()]

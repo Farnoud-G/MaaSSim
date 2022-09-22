@@ -191,8 +191,8 @@ def f_match(**kwargs):
 
         add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
 
-        index = sdf[sdf.hex_address == add].index
-        sdf.at[index,'demand'] = sdf.loc[index].demand+1
+        indexx = sdf[sdf.hex_address == add].index
+        sdf.at[indexx,'demand'] = sdf.loc[indexx].demand+1
     
     for index, row  in vehs.iterrows():
         lat = sim.inData.G.nodes[row.pos]['y']
@@ -200,8 +200,8 @@ def f_match(**kwargs):
 
         add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
 
-        index = sdf[sdf.hex_address == add].index
-        sdf.at[index,'supply'] = sdf.loc[index].supply+1
+        indexx = sdf[sdf.hex_address == add].index
+        sdf.at[indexx,'supply'] = sdf.loc[indexx].supply+1
 
     sdf['D/S'] = sdf.apply(lambda row: row['demand'] if row['supply']==0 else row['demand']/row['supply'],
                            axis=1) 
@@ -240,6 +240,7 @@ def f_match(**kwargs):
         simpax = sim.pax[simpaxes[0]]  # first traveller of shared ride (he is a leader and decision maker)
         veh.pax_id = simpaxes
         veh.update(event=driverEvent.RECEIVES_REQUEST)
+        
         for i in simpaxes:
             sim.pax[i].veh_id = veh_id #f#
             sim.pax[i].update(event=travellerEvent.RECEIVES_OFFER)
@@ -259,6 +260,9 @@ def f_match(**kwargs):
                 h3_add = h3.geo_to_h3(sim.inData.G.nodes[pax_request['origin']]['y'],
                                       sim.inData.G.nodes[pax_request['origin']]['x'],sim.params.zoning_level) #f#
                 smp = sdf[sdf.hex_address == h3_add].surge_mp
+                ds = sdf[sdf.hex_address == h3_add]['D/S'] 
+                ds = ds[ds.index[0]]
+                
                 offer = {'pax_id': i,
                          'req_id': pax_request.name,
                          'simpaxes': simpaxes,
@@ -288,6 +292,24 @@ def f_match(**kwargs):
                 sim.pax[i].lREJECTS.append(sim.vehs[veh_id].id) #p
                 reqQ.pop(reqQ.index(req_id))
                 vehQ.pop(vehQ.index(veh_id))
+                
+                #------------------------------------------------------------------------------------
+                # print('pax.id for rej = ',simpax.id)
+                
+                # if ds<=1:
+                #     sim.sss['rej_upto1'].append(simpax.id)
+                # if 1<ds<=2:
+                #     sim.sss['rej_upto2'].append(simpax.id)
+                # if 2<ds<=3:
+                #     sim.sss['rej_upto3'].append(simpax.id)
+                # if 3<ds<=4:
+                #     sim.sss['rej_upto4'].append(simpax.id)
+                # if 4<ds<=5:
+                #     sim.sss['rej_upto5'].append(simpax.id)
+                # if 5<ds:
+                #     sim.sss['rej_above5'].append(simpax.id)
+        
+                #------------------------------------------------------------------------------------
             else:
                 veh.flagrej = False
                 for i in simpaxes:
@@ -295,6 +317,23 @@ def f_match(**kwargs):
                         sim.pax[i].got_offered.succeed()
                 vehQ.pop(vehQ.index(veh_id))  # pop offered ones
                 reqQ.pop(reqQ.index(req_id))  # from the queues
+                #------------------------------------------------------------------------------------
+                # print('pax.id for acc = ',simpax.id)
+
+                # if ds<=1:
+                #     sim.sss['acc_upto1'].append(simpax.id)
+                # if 1<ds<=2:
+                #     sim.sss['acc_upto2'].append(simpax.id)
+                # if 2<ds<=3:
+                #     sim.sss['acc_upto3'].append(simpax.id)
+                # if 3<ds<=4:
+                #     sim.sss['acc_upto4'].append(simpax.id)
+                # if 4<ds<=5:
+                #     sim.sss['acc_upto5'].append(simpax.id)
+                # if 5<ds:
+                #     sim.sss['acc_above5'].append(simpax.id)
+                    
+                #------------------------------------------------------------------------------------
 
         platform.updateQs()
 
