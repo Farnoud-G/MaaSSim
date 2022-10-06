@@ -4,6 +4,7 @@
 # Rafal Kucharski @ TU Delft, The Netherlands
 ################################################################################
 from math import exp
+import math
 import random
 import pandas as pd
 from dotmap import DotMap
@@ -205,10 +206,9 @@ def f_match(**kwargs):
 
     sdf['D/S'] = sdf.apply(lambda row: row['demand'] if row['supply']==0 else row['demand']/row['supply'],
                            axis=1) 
-    sdf['surge_mp'] = 0 # surge function
     
+    # sdf['surge_mp'] = 0 # surge function
     sim.concat_sdf = pd.concat([sim.concat_sdf, sdf])
-
     # print(sdf)
     #-----------------------------------------------------------------------
     
@@ -256,13 +256,31 @@ def f_match(**kwargs):
                     ttrav = pax_request.ttrav
                 else:
                     ttrav = pax_request.ttrav.total_seconds()
-                
-                h3_add = h3.geo_to_h3(sim.inData.G.nodes[pax_request['origin']]['y'],
-                                      sim.inData.G.nodes[pax_request['origin']]['x'],sim.params.zoning_level) #f#
-                smp = sdf[sdf.hex_address == h3_add].surge_mp
-                ds = sdf[sdf.hex_address == h3_add]['D/S'] 
-                ds = ds[ds.index[0]]
-                
+#----------------------------------------------------------------------------------
+#--------First approach
+                if sim.params.dynamic_paricing == 'On':
+                    max_ds_df = sim.inData.max_ds_df
+                    h3_add = h3.geo_to_h3(sim.inData.G.nodes[pax_request['origin']]['y'],
+                                          sim.inData.G.nodes[pax_request['origin']]['x'],
+                                          sim.params.zoning_level) #f#
+                    # smp = sdf[sdf.hex_address == h3_add].surge_mp
+                    ds = sdf[sdf.hex_address == h3_add]['D/S'] 
+                    ds = ds[ds.index[0]]
+                    max_ds = max_ds_df.loc[max_ds_df.index==h3_add]['ave_max'][h3_add]
+                    if max_ds==1:
+                        surge_fee = 0
+                    else:
+                        surge_fee = math.ceil((3/(max_ds-1))*ds - (3/(max_ds-1)))
+                else:
+                    surge_fee = 0
+
+#--------second approach
+
+                    # ave_max_ds = max_ds_df.ave_max.mean()
+                    # surge_fee = math.ceil((3/(ave_max_ds-1))*ds - (3/(ave_max_ds-1)))
+
+#----------------------------------------------------------------------------------
+
                 offer = {'pax_id': i,
                          'req_id': pax_request.name,
                          'simpaxes': simpaxes,
@@ -272,7 +290,7 @@ def f_match(**kwargs):
                          'wait_time': mintime,
                          'travel_time': ttrav,
                          'fare': max(platform.platform.get('base_fare',0)+platform.platform.fare*sim.pax[i].request.dist /                                      1000, platform.platform.get('min_fare',0)),
-                         'surge_mp': smp[smp.index[0]]}  # make an offer
+                         'surge_fee': surge_fee}  # make an offer
                 platform.offers[offer_id] = offer  # bookkeeping of offers made by platform
                 sim.pax[i].offers[platform.platform.name] = offer  # offer transferred to
                 sim.vehs[veh_id].offers[platform.platform.name] = offer  #f#
@@ -295,22 +313,35 @@ def f_match(**kwargs):
                 
                 #------------------------------------------------------------------------------------
                 # print('pax.id for rej = ',simpax.id)
+                # sim.ts.loc[len(sim.ts.index)] = [simpax.id, h3_add, ds] 
+
                 
                 # if ds<=1:
-                #     sim.sss['rej_upto1'].append(simpax.id)
-                # if 1<ds<=2:
-                #     sim.sss['rej_upto2'].append(simpax.id)
-                # if 2<ds<=3:
-                #     sim.sss['rej_upto3'].append(simpax.id)
-                # if 3<ds<=4:
-                #     sim.sss['rej_upto4'].append(simpax.id)
-                # if 4<ds<=5:
-                #     sim.sss['rej_upto5'].append(simpax.id)
-                # if 5<ds:
-                #     sim.sss['rej_above5'].append(simpax.id)
+                #     sim.sss['upto1'].append(simpax.id)
+                # elif 1<ds<=2:
+                #     sim.sss['upto2'].append(simpax.id)
+                # elif 2<ds<=3:
+                #     sim.sss['upto3'].append(simpax.id)
+                # elif 3<ds<=4:
+                #     sim.sss['upto4'].append(simpax.id)
+                # elif 4<ds<=5:
+                #     sim.sss['upto5'].append(simpax.id)
+                # elif 5<ds<=6:
+                #     sim.sss['upto6'].append(simpax.id)
+                # elif 6<ds<=7:
+                #     sim.sss['upto7'].append(simpax.id)
+                # elif 7<ds<=8:
+                #     sim.sss['upto8'].append(simpax.id)
+                # elif 8<ds<=9:
+                #     sim.sss['upto9'].append(simpax.id)
+                # elif 9<ds<=10:
+                #     sim.sss['upto10'].append(simpax.id)
+                # elif 10<ds:
+                #     sim.sss['above10'].append(simpax.id)
         
                 #------------------------------------------------------------------------------------
             else:
+                veh.surge_fees.append(veh.offers[1]['surge_fee'])
                 veh.flagrej = False
                 for i in simpaxes:
                     if not sim.pax[i].got_offered.triggered:
@@ -319,19 +350,30 @@ def f_match(**kwargs):
                 reqQ.pop(reqQ.index(req_id))  # from the queues
                 #------------------------------------------------------------------------------------
                 # print('pax.id for acc = ',simpax.id)
+                # sim.ts.loc[len(sim.ts.index)] = [simpax.id, h3_add, ds] 
 
                 # if ds<=1:
-                #     sim.sss['acc_upto1'].append(simpax.id)
-                # if 1<ds<=2:
-                #     sim.sss['acc_upto2'].append(simpax.id)
-                # if 2<ds<=3:
-                #     sim.sss['acc_upto3'].append(simpax.id)
-                # if 3<ds<=4:
-                #     sim.sss['acc_upto4'].append(simpax.id)
-                # if 4<ds<=5:
-                #     sim.sss['acc_upto5'].append(simpax.id)
-                # if 5<ds:
-                #     sim.sss['acc_above5'].append(simpax.id)
+                #     sim.sss['upto1'].append(simpax.id)
+                # elif 1<ds<=2:
+                #     sim.sss['upto2'].append(simpax.id)
+                # elif 2<ds<=3:
+                #     sim.sss['upto3'].append(simpax.id)
+                # elif 3<ds<=4:
+                #     sim.sss['upto4'].append(simpax.id)
+                # elif 4<ds<=5:
+                #     sim.sss['upto5'].append(simpax.id)
+                # elif 5<ds<=6:
+                #     sim.sss['upto6'].append(simpax.id)
+                # elif 6<ds<=7:
+                #     sim.sss['upto7'].append(simpax.id)
+                # elif 7<ds<=8:
+                #     sim.sss['upto8'].append(simpax.id)
+                # elif 8<ds<=9:
+                #     sim.sss['upto9'].append(simpax.id)
+                # elif 9<ds<=10:
+                #     sim.sss['upto10'].append(simpax.id)
+                # elif 10<ds:
+                #     sim.sss['above10'].append(simpax.id)
                     
                 #------------------------------------------------------------------------------------
 

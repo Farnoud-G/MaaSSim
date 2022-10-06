@@ -126,6 +126,9 @@ def dynamic_paricing(_inData, level):
     # hex_col = 'hex'+str(level)
     sdf['hex_address'] = sdf.apply(lambda x: h3.geo_to_h3(x.lat,x.lng,level),axis=1)
     sdf = sdf.groupby(['hex_address']).size().to_frame('cnt').reset_index()
+    max_ds_df = pd.read_csv('max_ds_dfl7.csv')
+    max_ds_df.set_index('hex_address',inplace=True)
+    _inData.max_ds_df = max_ds_df
     _inData.sdf = sdf
     
     return _inData
@@ -274,7 +277,7 @@ def read_requests_csv(_inData,_params, path): #f#
     df = df.loc[pd.Timestamp(_params.start_time)<df.treq]
     df = df.loc[(_params.start_time < df.treq) & (df.treq < _params.end_time)]
     
-    df = df.sample(_params.nP, random_state=3, replace= True)
+    df = df.sample(_params.nP, random_state=_params.seed, replace= True)
     _inData.passengers = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
     requests = pd.DataFrame(index=_inData.passengers.index, columns=_inData.requests.columns)
     requests.pax_id = _inData.passengers.index

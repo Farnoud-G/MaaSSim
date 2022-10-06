@@ -58,11 +58,17 @@ def RA_kpi_veh(*args,**kwargs):
                                  else row['RECEIVES_REQUEST'] + row['ENDS_SHIFT'] - cooling_t, axis=1)
     ret.fillna(0, inplace=True)  
     d = df[df['event_s']=='ARRIVES_AT_DROPOFF']
+    surge_l = []
+    for v in range(1, params.nV+1):
+        surge_l = surge_l + sim.vehs[v].surge_fees
+    d['surge_fee'] = surge_l
+    
     if len(d) != 0:
-        d['REVENUE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare), axis=1)*(1-params.platforms.comm_rate)
+        d['REVENUE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare)+row['surge_fee'], axis=1)*(1-params.platforms.comm_rate)
         ret['REVENUE'] = d.groupby(['veh']).sum().REVENUE
     else:
         ret['REVENUE'] = 0
+    ret['surge_fee'] = d.groupby(['veh']).sum().surge_fee
     ret['REVENUE/hour']=ret['REVENUE']/params.simTime
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
@@ -98,7 +104,7 @@ def RA_kpi_veh(*args,**kwargs):
 
 
     ret = ret[['ACCEPTANCE_RATE','PROFIT','PROFIT/hour','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_DIST','AVE_DRIVING_DIST',
-               'DRIVING_TIME','AVE_PICKUP_DIST','AVE_TRIP_DIST','REVENUE','REVENUE/hour','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
+               'DRIVING_TIME','AVE_PICKUP_DIST','AVE_TRIP_DIST','REVENUE', 'surge_fee','REVENUE/hour','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
     
     ret.index.name = 'veh'
 
@@ -166,7 +172,7 @@ def f_decline(veh, **kwargs):
     sim = veh.sim
     df = pd.DataFrame(veh.myrides)
     ASC = 1.810   #ASC    
-    surge = veh.offers[1]['surge_mp']
+    surge = veh.offers[1]['surge_fee']
     # print('veh_id', veh.id)
     # print('surge= ',surge)
     d = veh.offers[1]['request']["origin"]                                                       #pickup_time
