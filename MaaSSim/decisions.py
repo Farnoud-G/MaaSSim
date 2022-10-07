@@ -267,8 +267,10 @@ def f_match(**kwargs):
                     ds = sdf[sdf.hex_address == h3_add]['D/S'] 
                     ds = ds[ds.index[0]]
                     max_ds = max_ds_df.loc[max_ds_df.index==h3_add]['ave_max'][h3_add]
-                    if max_ds==1:
+                    if max_ds<=1:
                         surge_fee = 0
+                    elif ds>=max_ds:
+                        surge_fee = 3
                     else:
                         surge_fee = math.ceil((3/(max_ds-1))*ds - (3/(max_ds-1)))
                 else:
