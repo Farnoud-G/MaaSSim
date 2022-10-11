@@ -350,6 +350,8 @@ def f_match(**kwargs):
                         sim.pax[i].got_offered.succeed()
                 vehQ.pop(vehQ.index(veh_id))  # pop offered ones
                 reqQ.pop(reqQ.index(req_id))  # from the queues
+                #-----------------------------------------------------
+                sim.request_zone['surge{}'.format(surge_fee)].append(h3_add)
                 #------------------------------------------------------------------------------------
                 # print('pax.id for acc = ',simpax.id)
                 # sim.ts.loc[len(sim.ts.index)] = [simpax.id, h3_add, ds] 

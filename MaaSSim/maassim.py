@@ -76,6 +76,7 @@ class Simulator:
         self.sss = {'upto1':[], 'upto2':[], 'upto3':[], 'upto4':[], 'upto5':[], 'upto6':[],
                     'upto7':[], 'upto8':[], 'upto9':[], 'upto10':[], 'above10':[]}
         self.ts = pd.DataFrame(columns=['id','h3_address', 'D/S'])
+        self.request_zone = {'surge0':[], 'surge1':[], 'surge2':[], 'surge3':[]}
         self.vehicles = self.inData.vehicles  # input
         # if we want to restart vehicles everyday from fixed locations
         self.vehicle_fixed_positions = pd.Series(self.inData.vehicles.pos.values.copy(),
