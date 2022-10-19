@@ -60,15 +60,19 @@ def RA_kpi_veh(*args,**kwargs):
     d = df[df['event_s']=='ARRIVES_AT_DROPOFF']
     surge_l = []
     for v in range(1, params.nV+1):
-        surge_l = surge_l + sim.vehs[v].surge_fees
-    d['surge_fee'] = surge_l
+        surge_l = surge_l + sim.vehs[v].surge_mps
+    d['surge_mps'] = surge_l
     
     if len(d) != 0:
-        d['REVENUE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare)+row['surge_fee'], axis=1)*(1-params.platforms.comm_rate)
+        d['REVENUE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare), axis=1)*(1-params.platforms.comm_rate)
+        
+        d['s_REVENUE'] = d.apply(lambda row: (max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare))*row['surge_mps'], axis=1)*(1-params.platforms.comm_rate)
         ret['REVENUE'] = d.groupby(['veh']).sum().REVENUE
+        ret['s_REVENUE'] = d.groupby(['veh']).sum().s_REVENUE
     else:
         ret['REVENUE'] = 0
-    ret['surge_fee'] = d.groupby(['veh']).sum().surge_fee
+        ret['s_REVENUE'] = 0
+    # ret['surge_fee'] = d.groupby(['veh']).sum().surge_fee
     ret['REVENUE/hour']=ret['REVENUE']/params.simTime
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
@@ -103,8 +107,9 @@ def RA_kpi_veh(*args,**kwargs):
                                      '60-70' if x>60 and x<=70  else '70-80' if x>70 and x<=80  else '80-90' if x>80 and x<90 else '90-100')
 
 
-    ret = ret[['ACCEPTANCE_RATE','PROFIT','PROFIT/hour','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_DIST','AVE_DRIVING_DIST',
-               'DRIVING_TIME','AVE_PICKUP_DIST','AVE_TRIP_DIST','REVENUE', 'surge_fee','REVENUE/hour','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
+    ret = ret[['ACCEPTANCE_RATE','PROFIT','PROFIT/hour','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_DIST',
+     'AVE_DRIVING_DIST','DRIVING_TIME','AVE_PICKUP_DIST','AVE_TRIP_DIST','REVENUE','s_REVENUE',
+     'REVENUE/hour','COST','IMPOSED_DELAY','AR']]#+ [_.name for _ in driverEvent]]
     
     ret.index.name = 'veh'
 
@@ -173,6 +178,7 @@ def f_decline(veh, **kwargs):
     df = pd.DataFrame(veh.myrides)
     ASC = 1.810   #ASC    
     surge = veh.offers[1]['surge_fee']
+    # print('here----',surge)
     # print('veh_id', veh.id)
     # print('surge= ',surge)
     d = veh.offers[1]['request']["origin"]                                                       #pickup_time

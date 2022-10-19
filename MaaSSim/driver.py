@@ -94,6 +94,7 @@ class VehicleAgent(object):
         self.rejects = self.sim.env.event() #pf
         self.flagrej = False #pf
         self.surge_fees = [] #f
+        self.surge_mps = [] #f
 
     def update(self, event=None, pos=None, db_update=True):
         # call whenever pos or event of vehicle changes

@@ -266,15 +266,18 @@ def f_match(**kwargs):
                     # smp = sdf[sdf.hex_address == h3_add].surge_mp
                     ds = sdf[sdf.hex_address == h3_add]['D/S'] 
                     ds = ds[ds.index[0]]
-                    max_ds = max_ds_df.loc[max_ds_df.index==h3_add]['ave_max'][h3_add]
-                    if max_ds<=1:
-                        surge_fee = 0
+                    # max_ds = max_ds_df.loc[max_ds_df.index==h3_add]['ave_max'][h3_add]
+                    max_ds = max_ds_df.ave_max.max()
+                    if max_ds<=1 or ds<=1:
+                        surge_mp = 1
                     elif ds>=max_ds:
-                        surge_fee = 3
+                        surge_mp = 5
                     else:
-                        surge_fee = math.ceil((3/(max_ds-1))*ds - (3/(max_ds-1)))
+                        # surge_fee = math.ceil((3/(max_ds-1))*ds - (3/(max_ds-1)))
+                        surge_mp = round((4/(max_ds-1))*ds + ((max_ds-5)/(max_ds-1)), 1)
+                        # print('surge_mp----', surge_mp, 'max_ds= ', max_ds, ' ds= ', ds)
                 else:
-                    surge_fee = 0
+                    surge_mp = 1
 
 #--------second approach
 
@@ -282,7 +285,8 @@ def f_match(**kwargs):
                     # surge_fee = math.ceil((3/(ave_max_ds-1))*ds - (3/(ave_max_ds-1)))
 
 #----------------------------------------------------------------------------------
-
+                fare =(max(platform.platform.get('base_fare',0)+platform.platform.fare*
+                           sim.pax[i].request.dist/1000, platform.platform.get('min_fare',0)))*surge_mp
                 offer = {'pax_id': i,
                          'req_id': pax_request.name,
                          'simpaxes': simpaxes,
@@ -291,8 +295,8 @@ def f_match(**kwargs):
                          'request': pax_request,
                          'wait_time': mintime,
                          'travel_time': ttrav,
-                         'fare': max(platform.platform.get('base_fare',0)+platform.platform.fare*sim.pax[i].request.dist /                                      1000, platform.platform.get('min_fare',0)),
-                         'surge_fee': surge_fee}  # make an offer
+                         'fare': fare,
+                         'surge_fee': fare*(surge_mp-1)}  # make an offer
                 platform.offers[offer_id] = offer  # bookkeeping of offers made by platform
                 sim.pax[i].offers[platform.platform.name] = offer  # offer transferred to
                 sim.vehs[veh_id].offers[platform.platform.name] = offer  #f#
@@ -343,7 +347,7 @@ def f_match(**kwargs):
         
                 #------------------------------------------------------------------------------------
             else:
-                veh.surge_fees.append(veh.offers[1]['surge_fee'])
+                veh.surge_mps.append(surge_mp)
                 veh.flagrej = False
                 for i in simpaxes:
                     if not sim.pax[i].got_offered.triggered:
@@ -351,7 +355,7 @@ def f_match(**kwargs):
                 vehQ.pop(vehQ.index(veh_id))  # pop offered ones
                 reqQ.pop(reqQ.index(req_id))  # from the queues
                 #-----------------------------------------------------
-                sim.request_zone['surge{}'.format(surge_fee)].append(h3_add)
+                # sim.request_zone['surge{}'.format(surge_fee)].append(h3_add)
                 #------------------------------------------------------------------------------------
                 # print('pax.id for acc = ',simpax.id)
                 # sim.ts.loc[len(sim.ts.index)] = [simpax.id, h3_add, ds] 
