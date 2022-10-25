@@ -296,6 +296,7 @@ def f_match(**kwargs):
                          'wait_time': mintime,
                          'travel_time': ttrav,
                          'fare': fare,
+                         'surge_mp' : surge_mp,
                          'surge_fee': fare*(surge_mp-1)}  # make an offer
                 platform.offers[offer_id] = offer  # bookkeeping of offers made by platform
                 sim.pax[i].offers[platform.platform.name] = offer  # offer transferred to

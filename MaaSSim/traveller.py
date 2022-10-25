@@ -227,7 +227,7 @@ class PassengerAgent(object):
                         did_i_opt_out = self.f_platform_choice(traveller=self)
                     elif len(self.offers) == 1:
                         platform_id, offer = list(self.offers.items())[0]
-                        if self.f_trav_mode(traveller = self):
+                        if self.f_trav_mode(pax = self, sim = self.sim):
                             self.sim.plats[platform_id].handle_rejected(offer['pax_id'])
                             did_i_opt_out = True
                         else:

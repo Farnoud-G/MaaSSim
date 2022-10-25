@@ -130,6 +130,25 @@ def dynamic_paricing(_inData, level):
     max_ds_df.set_index('hex_address',inplace=True)
     _inData.max_ds_df = max_ds_df
     _inData.sdf = sdf
+    #------------------------------------------------------------------
+    RD = [-0.43, -0.31, -0.47, -0.47, -0.33, -0.60, -0.80, -0.99, -0.99, -0.99, -0.99, -0.99, -0.34
+      , -0.34, -0.34, -0.34, -0.34, -0.34, -0.34, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61,
+      -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61]
+    SMP = list(np.arange(1.2, 5.1, 0.1))
+    pr = [100]
+    smp = [1]
+
+    for i in range(0,len(RD)):
+        dp = (SMP[i]-smp[-1])/smp[-1]
+        dd = dp*(RD[i])
+        pr.append((1+dd)*pr[-1])
+        smp.append(SMP[i])
+
+    surge_dict = {}
+    for i in range(0, len(smp)):
+        surge_dict[smp[i]] = pr[i]
+    surge_dict[1.1] = (surge_dict[1] + surge_dict[1.2])/2
+    _inData.surge_dict = surge_dict
     
     return _inData
 
