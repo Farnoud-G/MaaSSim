@@ -136,7 +136,7 @@ def dynamic_paricing(_inData, level):
       -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61, -0.61]
     SMP = list(np.arange(1.2, 5.1, 0.1))
     SMP = [round(item, 1) for item in SMP]
-    pr = [100]
+    pr = [1]
     smp = [1]
 
     for i in range(0,len(RD)):

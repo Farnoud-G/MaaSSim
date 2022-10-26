@@ -173,7 +173,8 @@ def RA_kpi_pax(*args,**kwargs):
 def f_mode(pax, sim):
     surge_mp = pax.offers[1]['surge_mp']
     purchase_rate = sim.inData.surge_dict[surge_mp]
-    # print('purchase_rate= ',purchase_rate)
+    print('purchase_rate= ',purchase_rate)
+    
     if random.random() > purchase_rate:
         return True
     else:
