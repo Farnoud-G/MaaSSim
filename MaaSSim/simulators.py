@@ -127,16 +127,16 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         #     sim.platforms.comm_rate[1] = 0.50
         #     print('Tragedy STARTS!')
             
-        if 150<=day<250:
-            sim.platforms.comm_rate[1] = 0.20
-        elif 250<=day<350:
+        if 300<=day:
             sim.platforms.comm_rate[1] = 0.50
-        elif 350<=day:
-            sim.platforms.comm_rate[1] = 0.20
-        else:
-            sim.platforms.comm_rate[1] = 0.0
+        # elif 250<=day<350:
+        #     sim.platforms.comm_rate[1] = 0.50
+        # elif 350<=day:
+        #     sim.platforms.comm_rate[1] = 0.20
+        # else:
+        #     sim.platforms.comm_rate[1] = 0.0
 
-        # params.platforms.discount = 0.20 if 300<=day<350 else 0
+        params.platforms.discount = 0.40 if 25<=day<200 else 0
         # if 25<=day<100:
         #     params.platforms.discount = 0.40
         # else:

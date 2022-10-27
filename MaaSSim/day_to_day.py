@@ -207,7 +207,7 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     
-    if len(sim.res) in range(50, 150):
+    if len(sim.res) in range(50, 100):
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
         retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
         retx['INFORMED'] = True
@@ -331,7 +331,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     
-    if len(sim.res) in range(50, 150):
+    if len(sim.res) in range(50, 100):
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nP))
         retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
         retx['INFORMED'] = True
