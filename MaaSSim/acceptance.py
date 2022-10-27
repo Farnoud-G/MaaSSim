@@ -58,10 +58,10 @@ def RA_kpi_veh(*args,**kwargs):
                                  else row['RECEIVES_REQUEST'] + row['ENDS_SHIFT'] - cooling_t, axis=1)
     ret.fillna(0, inplace=True)  
     d = df[df['event_s']=='ARRIVES_AT_DROPOFF']
-    surge_l = []
+    ssurge_l = []
     for v in range(1, params.nV+1):
-        surge_l = surge_l + sim.vehs[v].surge_mps
-    d['surge_mps'] = surge_l
+        surge_l.append(sum(sim.vehs[v].surge_fees))
+    ret['surge_mps'] = surge_l
     
     if len(d) != 0:
         d['REVENUE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare), axis=1)*(1-params.platforms.comm_rate)

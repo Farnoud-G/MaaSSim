@@ -287,6 +287,7 @@ def f_match(**kwargs):
 #----------------------------------------------------------------------------------
                 fare =(max(platform.platform.get('base_fare',0)+platform.platform.fare*
                            sim.pax[i].request.dist/1000, platform.platform.get('min_fare',0)))*surge_mp
+                surge_fee = fare*(surge_mp-1)
                 offer = {'pax_id': i,
                          'req_id': pax_request.name,
                          'simpaxes': simpaxes,
@@ -297,7 +298,7 @@ def f_match(**kwargs):
                          'travel_time': ttrav,
                          'fare': fare,
                          'surge_mp' : surge_mp,
-                         'surge_fee': fare*(surge_mp-1)}  # make an offer
+                         'surge_fee': surge_fee}  # make an offer
                 platform.offers[offer_id] = offer  # bookkeeping of offers made by platform
                 sim.pax[i].offers[platform.platform.name] = offer  # offer transferred to
                 sim.vehs[veh_id].offers[platform.platform.name] = offer  #f#
@@ -349,6 +350,7 @@ def f_match(**kwargs):
                 #------------------------------------------------------------------------------------
             else:
                 veh.surge_mps.append(surge_mp)
+                veh.surge_fees.append(surge_fee)
                 veh.flagrej = False
                 for i in simpaxes:
                     if not sim.pax[i].got_offered.triggered:
