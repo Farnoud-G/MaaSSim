@@ -160,6 +160,15 @@ def RA_kpi_pax(*args,**kwargs):
     ret['LOST_PATIENCE'] = ret.apply(lambda row: False if row['ARRIVES_AT_DROPOFF']>0 else True,axis=1) 
     ret['TRAVEL_TIME'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
     ret['WAIT_TIME'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))
+    ret['SURGE_MP'] = 0
+    for pax_id in range(0, params.nP):
+        try:
+            ret.SURGE_MP.iloc[pax_id] = sim.pax[pax_id].offers[1]['surge_mp']
+        except:
+            ret.SURGE_MP.iloc[pax_id] = 'no_offer'
+            
+    
+    
     ret.fillna(0, inplace=True)
 
     ret = ret[['veh_id','WAIT_TIME','nREJECTS','TRAVEL_TIME','LOST_PATIENCE']] #+ [_.name for _ in travellerEvent]]
