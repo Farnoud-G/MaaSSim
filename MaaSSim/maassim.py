@@ -122,6 +122,7 @@ class Simulator:
         self.vehs = dict()  # list of vehicles
         self.plats = dict()  # list of platforms
         self.sim_start = None
+        self.alt_mode_pax = list() #f
 
     def generate(self):
         # generate passengers and vehicles as agents in the simulation (inData stays intact)

@@ -58,25 +58,24 @@ def RA_kpi_veh(*args,**kwargs):
                                  else row['RECEIVES_REQUEST'] + row['ENDS_SHIFT'] - cooling_t, axis=1)
     ret.fillna(0, inplace=True)  
     d = df[df['event_s']=='ARRIVES_AT_DROPOFF']
-    surge_mps = []
+    
+    surge_mps = {}; surge_fees = {}
     for v in range(1, params.nV+1):
-        surge_mps = surge_mps + sim.vehs[v].surge_mps
-    d['surge_mps'] = surge_mps
+        surge_mps = surge_mps | sim.vehs[v].surge_mps
+        surge_fees = surge_fees | sim.vehs[v].surge_fees
+    d['surge_mps'] = d.apply(lambda row: surge_mps[row.paxes[0]], axis=1)
+    d['surge_fees'] = d.apply(lambda row: surge_fees[row.paxes[0]], axis=1)
 
-    surge_fees = []
-    for v in range(1, params.nV+1):
-        surge_fees.append(sum(sim.vehs[v].surge_fees))
-    ret['surge_fees'] = surge_fees
     
     if len(d) != 0:
-        d['REVENUE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare), axis=1)*(1-params.platforms.comm_rate)
-        
-        d['s_REVENUE'] = d.apply(lambda row: (max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare))*row['surge_mps'], axis=1)*(1-params.platforms.comm_rate)
+        d['REVENUE'] = d.apply(lambda row: (max(row['dt'] * (params.speeds.ride/1000) * params.platforms.fare + params.platforms.base_fare, params.platforms.min_fare))*row['surge_mps'], axis=1)*(1-params.platforms.comm_rate)
         ret['REVENUE'] = d.groupby(['veh']).sum().REVENUE
-        ret['s_REVENUE'] = d.groupby(['veh']).sum().s_REVENUE
+        ret['SURGE_FEES'] = d.groupby(['veh']).sum().surge_fees
+        ret['AVE_SURGE_MP'] = d.groupby(['veh']).mean().surge_mps
     else:
         ret['REVENUE'] = 0
-        ret['s_REVENUE'] = 0
+        ret['SURGE_FEES'] = 0 
+        ret['AVE_SURGE_MP'] = 0
     # ret['surge_fee'] = d.groupby(['veh']).sum().surge_fee
     ret['REVENUE/hour']=ret['REVENUE']/params.simTime
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
@@ -113,8 +112,8 @@ def RA_kpi_veh(*args,**kwargs):
 
 
     ret = ret[['ACCEPTANCE_RATE','PROFIT','PROFIT/hour','IDLE_TIME','nREQUESTS','nRIDES','nREJECTS','DRIVING_DIST',
-     'AVE_DRIVING_DIST','DRIVING_TIME','AVE_PICKUP_DIST','AVE_TRIP_DIST','REVENUE','s_REVENUE',
-     'REVENUE/hour','COST','IMPOSED_DELAY','AR', 'surge_fees']]#+ [_.name for _ in driverEvent]]
+     'AVE_DRIVING_DIST','DRIVING_TIME','AVE_PICKUP_DIST','AVE_TRIP_DIST','REVENUE',
+     'REVENUE/hour','COST','IMPOSED_DELAY','AR','SURGE_FEES','AVE_SURGE_MP']]#+ [_.name for _ in driverEvent]]
     
     ret.index.name = 'veh'
 
@@ -191,6 +190,7 @@ def f_mode(pax, sim):
     # print('purchase_rate= ',purchase_rate)
     
     if random.random() > purchase_rate:
+        sim.alt_mode_pax.append(pax.id)
         return True
     else:
         return False

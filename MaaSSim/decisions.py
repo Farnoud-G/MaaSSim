@@ -349,8 +349,8 @@ def f_match(**kwargs):
         
                 #------------------------------------------------------------------------------------
             else:
-                veh.surge_mps.append(surge_mp)
-                veh.surge_fees.append(surge_fee)
+                veh.surge_mps[simpax.id] = surge_mp
+                veh.surge_fees[simpax.id] = surge_fee
                 veh.flagrej = False
                 for i in simpaxes:
                     if not sim.pax[i].got_offered.triggered:
