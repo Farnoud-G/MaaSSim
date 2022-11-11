@@ -144,6 +144,7 @@ class PassengerAgent(object):
 
         self.t_matching = None  # time for match
         self.lREJECTS=list() #p
+        self.last_len = 0 #f
 
 
     def update(self, event, pos=None, t=True, db_update=True):
@@ -185,6 +186,7 @@ class PassengerAgent(object):
             platform = self.sim.plats[platform_id]
             if self.request.name in platform.reqQ:
                 platform.reqQ.pop(platform.reqQ.index(self.request.name))
+            self.last_len = len(self.sim.concat_sdf)#f
             platform.updateQs()
             # platform.resource.release(self.reqs[platform_id])
             # self.reqs[platform_id].cancel()

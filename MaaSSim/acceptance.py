@@ -5,6 +5,8 @@ import numpy as np
 from dotmap import DotMap
 import math
 import random as random
+import h3
+
 
 def imposed_delay(sim,veh_id):
     
@@ -163,20 +165,33 @@ def RA_kpi_pax(*args,**kwargs):
     ret['OUT'] = ~ret['OUT'].isnull()
     ret['LOST_PATIENCE'] = ret.apply(lambda row: False if row['REJECTS_OFFER']>0 or row['ARRIVES_AT_DROPOFF']>0 else True ,axis=1)  
     ret['TRAVEL_TIME'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
-    ret['WAIT_TIME'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))
-    ret['SURGE_MP'] = 0
+    ret['WAIT_TIME'] = (ret['RECEIVES_OFFER'] + ret['IS_REJECTED_BY_VEHICLE']+
+                        ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))
+    ret['SURGE_MP'] = 0; ret['ZONE'] = 0; ret['DS_RATIO'] = 0
     for pax_id in range(0, params.nP):
         try:
             ret.SURGE_MP.iloc[pax_id] = sim.pax[pax_id].offers[1]['surge_mp']
+            ret.DS_RATIO.iloc[pax_id] = sim.pax[pax_id].offers[1]['DS_ratio']
+            ret.ZONE.iloc[pax_id] = sim.pax[pax_id].offers[1]['zone']
         except:
-            ret.SURGE_MP.iloc[pax_id] = 'no_offer'
+            ret.SURGE_MP.iloc[pax_id] = 0
+            
+            pos = sim.pax[pax_id].pax.pos
+            lat = sim.inData.G.nodes[pos]['y']; lng = sim.inData.G.nodes[pos]['x']
+            add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
+            sdf = sim.concat_sdf.reset_index()[0:sim.pax[pax_id].last_len].copy()
+            ds = sdf.loc[sdf.hex_address==add].iloc[-1]['D/S']
+            
+            ret.ZONE.iloc[pax_id] = add
+            ret.DS_RATIO.iloc[pax_id] = ds
+            
     ret['OFFER_REJECTED_BY_PAX'] = ret.apply(lambda row: True if row.REJECTS_OFFER>0 else False, axis=1)
     
     
     ret.fillna(0, inplace=True)
 
     ret = ret[['veh_id','WAIT_TIME','nREJECTS','TRAVEL_TIME','LOST_PATIENCE','OFFER_REJECTED_BY_PAX',
-               'SURGE_MP']] #+ [_.name for _ in travellerEvent]]
+               'SURGE_MP', 'DS_RATIO', 'ZONE']] #+ [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])

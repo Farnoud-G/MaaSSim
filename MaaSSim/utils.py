@@ -126,6 +126,9 @@ def dynamic_paricing(_inData, level):
     # hex_col = 'hex'+str(level)
     sdf['hex_address'] = sdf.apply(lambda x: h3.geo_to_h3(x.lat,x.lng,level),axis=1)
     sdf = sdf.groupby(['hex_address']).size().to_frame('cnt').reset_index()
+    ds_dict = {100:'max_ds_100.csv', 200:'max_ds_200.csv', 300:'max_ds_300.csv',
+                   400:'max_ds_400.csv', 500:'max_ds_500.csv'}
+    max_ds_df = pd.read_csv(max_ds_dict[_params.nV])
     max_ds_df = pd.read_csv('max_ds_dfl7.csv')
     max_ds_df.set_index('hex_address',inplace=True)
     _inData.max_ds_df = max_ds_df

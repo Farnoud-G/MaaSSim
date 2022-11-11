@@ -180,35 +180,36 @@ def f_match(**kwargs):
     sim = platform.sim  # reference to the simulation object
     
     #f# Surge fee ----------------------------------------------------------
-    vehs = sim.vehicles.loc[vehQ]
-    pax = sim.passengers.loc[reqQ]
-    sdf = sim.inData.sdf   
-    sdf['demand'] = 0 
-    sdf['supply'] = 0 
-    
-    for index, row  in pax.iterrows():
-        lat = sim.inData.G.nodes[row.pos]['y']
-        lng = sim.inData.G.nodes[row.pos]['x']
+    if sim.params.dynamic_paricing == 'On':
+        vehs = sim.vehicles.loc[vehQ]
+        pax = sim.passengers.loc[reqQ]
+        sdf = sim.inData.sdf   
+        sdf['demand'] = 0 
+        sdf['supply'] = 0 
 
-        add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
+        for index, row  in pax.iterrows():
+            lat = sim.inData.G.nodes[row.pos]['y']
+            lng = sim.inData.G.nodes[row.pos]['x']
 
-        indexx = sdf[sdf.hex_address == add].index
-        sdf.at[indexx,'demand'] = sdf.loc[indexx].demand+1
-    
-    for index, row  in vehs.iterrows():
-        lat = sim.inData.G.nodes[row.pos]['y']
-        lng = sim.inData.G.nodes[row.pos]['x']
+            add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
 
-        add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
+            indexx = sdf[sdf.hex_address == add].index
+            sdf.at[indexx,'demand'] = sdf.loc[indexx].demand+1
 
-        indexx = sdf[sdf.hex_address == add].index
-        sdf.at[indexx,'supply'] = sdf.loc[indexx].supply+1
+        for index, row  in vehs.iterrows():
+            lat = sim.inData.G.nodes[row.pos]['y']
+            lng = sim.inData.G.nodes[row.pos]['x']
 
-    sdf['D/S'] = sdf.apply(lambda row: row['demand'] if row['supply']==0 else row['demand']/row['supply'],
-                           axis=1) 
-    
-    # sdf['surge_mp'] = 0 # surge function
-    sim.concat_sdf = pd.concat([sim.concat_sdf, sdf])
+            add = h3.geo_to_h3(lat,lng,sim.params.zoning_level)
+
+            indexx = sdf[sdf.hex_address == add].index
+            sdf.at[indexx,'supply'] = sdf.loc[indexx].supply+1
+
+        sdf['D/S'] = sdf.apply(lambda row: row['demand'] if row['supply']==0 else row['demand']/row['supply'],
+                               axis=1) 
+
+        # sdf['surge_mp'] = 0 # surge function
+        sim.concat_sdf = pd.concat([sim.concat_sdf, sdf])
     # print(sdf)
     #-----------------------------------------------------------------------
     
@@ -258,7 +259,7 @@ def f_match(**kwargs):
                     ttrav = pax_request.ttrav.total_seconds()
 #----------------------------------------------------------------------------------
 #--------First approach
-                if sim.params.dynamic_paricing == 'On':
+                if False:#sim.params.dynamic_paricing == 'On':
                     max_ds_df = sim.inData.max_ds_df
                     h3_add = h3.geo_to_h3(sim.inData.G.nodes[pax_request['origin']]['y'],
                                           sim.inData.G.nodes[pax_request['origin']]['x'],
@@ -277,7 +278,8 @@ def f_match(**kwargs):
                         surge_mp = round((4/(max_ds-1))*ds + ((max_ds-5)/(max_ds-1)), 1)
                         # print('surge_mp----', surge_mp, 'max_ds= ', max_ds, ' ds= ', ds)
                 else:
-                    surge_mp = 1
+                    surge_mp = 1; ds = '-'; h3_add = '-'
+                    
 
 #--------second approach
 
@@ -287,7 +289,7 @@ def f_match(**kwargs):
 #----------------------------------------------------------------------------------
                 fare =(max(platform.platform.get('base_fare',0)+platform.platform.fare*
                            sim.pax[i].request.dist/1000, platform.platform.get('min_fare',0)))*surge_mp
-                surge_fee = fare*(surge_mp-1)
+                surge_fee = fare*((surge_mp-1)/surge_mp)*(1-sim.params.platforms.comm_rate)
                 offer = {'pax_id': i,
                          'req_id': pax_request.name,
                          'simpaxes': simpaxes,
@@ -298,7 +300,9 @@ def f_match(**kwargs):
                          'travel_time': ttrav,
                          'fare': fare,
                          'surge_mp' : surge_mp,
-                         'surge_fee': surge_fee}  # make an offer
+                         'surge_fee': surge_fee,
+                         'DS_ratio':ds,
+                         'zone': h3_add}  # make an offer
                 platform.offers[offer_id] = offer  # bookkeeping of offers made by platform
                 sim.pax[i].offers[platform.platform.name] = offer  # offer transferred to
                 sim.vehs[veh_id].offers[platform.platform.name] = offer  #f#
@@ -319,35 +323,6 @@ def f_match(**kwargs):
                 reqQ.pop(reqQ.index(req_id))
                 vehQ.pop(vehQ.index(veh_id))
                 
-                #------------------------------------------------------------------------------------
-                # print('pax.id for rej = ',simpax.id)
-                # sim.ts.loc[len(sim.ts.index)] = [simpax.id, h3_add, ds] 
-
-                
-                # if ds<=1:
-                #     sim.sss['upto1'].append(simpax.id)
-                # elif 1<ds<=2:
-                #     sim.sss['upto2'].append(simpax.id)
-                # elif 2<ds<=3:
-                #     sim.sss['upto3'].append(simpax.id)
-                # elif 3<ds<=4:
-                #     sim.sss['upto4'].append(simpax.id)
-                # elif 4<ds<=5:
-                #     sim.sss['upto5'].append(simpax.id)
-                # elif 5<ds<=6:
-                #     sim.sss['upto6'].append(simpax.id)
-                # elif 6<ds<=7:
-                #     sim.sss['upto7'].append(simpax.id)
-                # elif 7<ds<=8:
-                #     sim.sss['upto8'].append(simpax.id)
-                # elif 8<ds<=9:
-                #     sim.sss['upto9'].append(simpax.id)
-                # elif 9<ds<=10:
-                #     sim.sss['upto10'].append(simpax.id)
-                # elif 10<ds:
-                #     sim.sss['above10'].append(simpax.id)
-        
-                #------------------------------------------------------------------------------------
             else:
                 veh.surge_mps[simpax.id] = surge_mp
                 veh.surge_fees[simpax.id] = surge_fee
@@ -357,36 +332,6 @@ def f_match(**kwargs):
                         sim.pax[i].got_offered.succeed()
                 vehQ.pop(vehQ.index(veh_id))  # pop offered ones
                 reqQ.pop(reqQ.index(req_id))  # from the queues
-                #-----------------------------------------------------
-                # sim.request_zone['surge{}'.format(surge_fee)].append(h3_add)
-                #------------------------------------------------------------------------------------
-                # print('pax.id for acc = ',simpax.id)
-                # sim.ts.loc[len(sim.ts.index)] = [simpax.id, h3_add, ds] 
-
-                # if ds<=1:
-                #     sim.sss['upto1'].append(simpax.id)
-                # elif 1<ds<=2:
-                #     sim.sss['upto2'].append(simpax.id)
-                # elif 2<ds<=3:
-                #     sim.sss['upto3'].append(simpax.id)
-                # elif 3<ds<=4:
-                #     sim.sss['upto4'].append(simpax.id)
-                # elif 4<ds<=5:
-                #     sim.sss['upto5'].append(simpax.id)
-                # elif 5<ds<=6:
-                #     sim.sss['upto6'].append(simpax.id)
-                # elif 6<ds<=7:
-                #     sim.sss['upto7'].append(simpax.id)
-                # elif 7<ds<=8:
-                #     sim.sss['upto8'].append(simpax.id)
-                # elif 8<ds<=9:
-                #     sim.sss['upto9'].append(simpax.id)
-                # elif 9<ds<=10:
-                #     sim.sss['upto10'].append(simpax.id)
-                # elif 10<ds:
-                #     sim.sss['above10'].append(simpax.id)
-                    
-                #------------------------------------------------------------------------------------
 
         platform.updateQs()
 
