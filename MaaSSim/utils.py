@@ -186,7 +186,8 @@ def generate_demand(_inData, _params=None, avg_speed=False):
     df = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
     df.status = travellerEvent.STARTS_DAY
     df.pos = _inData.nodes.sample(_params.nP).index  # df.pos = df.apply(lambda x: rand_node(_inData.nodes), axis=1)
-    df['exp_utility_eps'] = np.random.gumbel(0, _params.d2d.exp_utility_eps, _params.nP)  #f#
+    if _params.d2d.heterogeneous: #f#
+        df['exp_utility_eps'] = np.random.gumbel(0, _params.d2d.exp_utility_eps, _params.nP)  #f#
     df['learning'] = 'on' #f#
     df['rh_U'] = 0.5 #f#
     _inData.passengers = df
