@@ -112,7 +112,7 @@ def load_G(_inData, _params=None, stats=True, set_t=True):
         _inData.stats = networkstats(_inData)  # calculate center of network, radius and central node
     return _inData
 
-def dynamic_paricing(_inData, level):
+def dynamic_paricing(_inData, _params, level):
     lat = []
     lng = []
     for i in _inData.G.nodes:
@@ -127,9 +127,9 @@ def dynamic_paricing(_inData, level):
     sdf['hex_address'] = sdf.apply(lambda x: h3.geo_to_h3(x.lat,x.lng,level),axis=1)
     sdf = sdf.groupby(['hex_address']).size().to_frame('cnt').reset_index()
     ds_dict = {100:'max_ds_100.csv', 200:'max_ds_200.csv', 300:'max_ds_300.csv',
-                   400:'max_ds_400.csv', 500:'max_ds_500.csv'}
-    max_ds_df = pd.read_csv(max_ds_dict[_params.nV])
-    max_ds_df = pd.read_csv('max_ds_dfl7.csv')
+               400:'max_ds_400.csv', 500:'max_ds_500.csv', 600:'max_ds_500.csv',
+               700:'max_ds_500.csv', 800:'max_ds_500.csv', 900:'max_ds_500.csv', 1000:'max_ds_500.csv'}
+    max_ds_df = pd.read_csv(ds_dict[_params.nV])
     max_ds_df.set_index('hex_address',inplace=True)
     _inData.max_ds_df = max_ds_df
     _inData.sdf = sdf

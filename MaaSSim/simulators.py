@@ -103,7 +103,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         inData = load_G(inData, params, stats=True)  # download graph for the 'params.city' and calc the skim matrices
         
     if params.dynamic_paricing == 'On':
-        inData = dynamic_paricing(inData, level=params.zoning_level)
+        inData = dynamic_paricing(inData, params, level=params.zoning_level)
     
     if params.paths.get('requests', False):
         inData = read_requests_csv(inData, params, path=params.paths.requests)

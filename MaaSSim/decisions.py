@@ -259,7 +259,7 @@ def f_match(**kwargs):
                     ttrav = pax_request.ttrav.total_seconds()
 #----------------------------------------------------------------------------------
 #--------First approach
-                if False:#sim.params.dynamic_paricing == 'On':
+                if sim.params.dynamic_paricing == 'On':
                     max_ds_df = sim.inData.max_ds_df
                     h3_add = h3.geo_to_h3(sim.inData.G.nodes[pax_request['origin']]['y'],
                                           sim.inData.G.nodes[pax_request['origin']]['x'],
