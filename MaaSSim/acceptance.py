@@ -63,8 +63,10 @@ def RA_kpi_veh(*args,**kwargs):
     
     surge_mps = {}; surge_fees = {}
     for v in range(1, params.nV+1):
-        surge_mps = surge_mps | sim.vehs[v].surge_mps
-        surge_fees = surge_fees | sim.vehs[v].surge_fees
+        # surge_mps = surge_mps | sim.vehs[v].surge_mps
+        # surge_fees = surge_fees | sim.vehs[v].surge_fees
+        surge_mps.update(sim.vehs[v].surge_mps)
+        surge_fees.update(sim.vehs[v].surge_fees)
     d['surge_mps'] = d.apply(lambda row: surge_mps[row.paxes[0]], axis=1)
     d['surge_fees'] = d.apply(lambda row: surge_fees[row.paxes[0]], axis=1)
 
