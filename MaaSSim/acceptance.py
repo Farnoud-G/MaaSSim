@@ -40,6 +40,8 @@ def RA_kpi_veh(*args,**kwargs):
     ret.columns.name = None
     ret = ret.reindex(vehindex)  # update for vehicles with no record
     ret['nREQUESTS'] = df[df.event == driverEvent.RECEIVES_REQUEST.name].groupby(['veh']).size().reindex(ret.index)
+    # we need number request received by drivers and accepted by pax for Acceptance Rate calculation
+    ret['n_pax_rejected_REQUESTS'] = df[df.event == driverEvent.IS_REJECTED_BY_TRAVELLER.name].groupby(['veh']).size().reindex(ret.index)
     ret['nRIDES'] = df[df.event == driverEvent.ARRIVES_AT_DROPOFF.name].groupby(['veh']).size().reindex(ret.index)
     ret['nREJECTS'] = df[df.event==driverEvent.REJECTS_REQUEST.name].groupby(['veh']).size().reindex(ret.index)
     for status in driverEvent:
@@ -85,7 +87,7 @@ def RA_kpi_veh(*args,**kwargs):
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
     ret['PROFIT/hour']=ret['PROFIT']/params.simTime
-    ret['ACCEPTANCE_RATE'] = (ret['nRIDES']/ret['nREQUESTS'])*100
+    ret['ACCEPTANCE_RATE'] = (ret['nRIDES']/(ret['nREQUESTS']-ret['n_pax_rejected_REQUESTS']))*100
     # add imposed delay------------------------------------------------
     # trips = simrun['trips']
     # trips = trips.reset_index().drop(["index"], axis=1)
