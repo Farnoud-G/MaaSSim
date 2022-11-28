@@ -237,7 +237,6 @@ def f_decline(veh, **kwargs):
         
            
     V = (ASC*1)+ (pickup_time*(-0.050)) + (waiting_time*(-0.017)) + (surge*0.101)
-    
     acc_prob = (math.exp(V))/(1+math.exp(V))
 
     if acc_prob > random.uniform(0, 1):
