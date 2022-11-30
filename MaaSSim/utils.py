@@ -126,9 +126,9 @@ def dynamic_paricing(_inData, _params, level):
     # hex_col = 'hex'+str(level)
     sdf['hex_address'] = sdf.apply(lambda x: h3.geo_to_h3(x.lat,x.lng,level),axis=1)
     sdf = sdf.groupby(['hex_address']).size().to_frame('cnt').reset_index()
-    ds_dict = {100:'max_ds_100.csv', 200:'max_ds_200.csv', 300:'max_ds_300.csv',
-               400:'max_ds_400.csv', 500:'max_ds_500.csv', 600:'max_ds_500.csv',
-               700:'max_ds_500.csv', 800:'max_ds_500.csv', 900:'max_ds_500.csv', 1000:'max_ds_500.csv'}
+    ds_dict = {100:'max_ds_100new.csv', 200:'max_ds_200new.csv', 300:'max_ds_300new.csv',
+               400:'max_ds_400new.csv', 500:'max_ds_400new.csv', 600:'max_ds_400new.csv',
+               700:'max_ds_400new.csv', 800:'max_ds_400new.csv', 900:'max_ds_400new.csv', 1000:'max_ds_500.csv'}
     max_ds_df = pd.read_csv(ds_dict[_params.nV])
     max_ds_df.set_index('hex_address',inplace=True)
     _inData.max_ds_df = max_ds_df
@@ -332,11 +332,12 @@ def generate_demand(_inData, _params=None, avg_speed=False):
 
 def read_requests_csv(_inData,_params, path): #f# with synthetic treq distribution
     from .data_structures import structures
-    try:
-        _params.t0 = pd.to_datetime(_params.t0)
-    except:
-        pass
+    # try:
+    #     _params.t0 = pd.to_datetime(_params.t0)
+    # except:
+    #     pass
     
+    _params.t0 = _params.start_time
     df = pd.read_csv(path)
     df = df[df.dist>_params.dist_threshold_min]
     df = df.sample(_params.nP, random_state=_params.seed, replace= True)
@@ -348,8 +349,7 @@ def read_requests_csv(_inData,_params, path): #f# with synthetic treq distributi
     requests.destination = list(df.destination) #[46423397, 1686005089]#df.destination
 
     if _params.demand_structure.temporal_distribution == 'uniform':
-        treq = np.random.uniform(-_params.simTime * 60 * 60 / 2, _params.simTime * 60 * 60 / 2,
-                                 _params.nP)  # apply uniform distribution on request times
+        treq = np.random.uniform(0, _params.simTime * 60 * 60, _params.nP)  # apply uniform distribution on request times
         
     requests.treq = [_params.t0 + pd.Timedelta(int(_), 's') for _ in treq]
     requests['dist'] = requests.apply(lambda request: _inData.skim.loc[request.origin, request.destination], axis=1)
