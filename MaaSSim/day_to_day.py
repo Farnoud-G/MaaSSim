@@ -207,7 +207,7 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     
-    if len(sim.res) in range(50, 150):
+    if len(sim.res) in range(50, 100):
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
         retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
         retx['INFORMED'] = True
@@ -313,7 +313,7 @@ def d2d_kpi_pax(*args,**kwargs):
     # ==================================================================================================================#
     # Rafal & Farnoud (2022)
     
-    ret['plat_profit'] = float('nan')
+    ret['plat_revenue'] = float('nan')
     ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].pax_exp.INFORMED
     #-------------------------------------------------------
     """ Utility gained through experience"""
@@ -331,7 +331,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     
-    if len(sim.res) in range(50, 150):
+    if len(sim.res) in range(50, 100):
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nP))
         retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
         retx['INFORMED'] = True
@@ -367,7 +367,7 @@ def d2d_kpi_pax(*args,**kwargs):
     # ================================================================================================= #
 
     ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
-               'MARKETING_U','WOM_U','INFORMED', 'plat_profit','MATCHING_T'] + [_.name for _ in travellerEvent]]
+               'MARKETING_U','WOM_U','INFORMED', 'plat_revenue','MATCHING_T'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])
@@ -394,7 +394,7 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
     disc_rh_fare = (1-disc)*rh_fare
     rh_U = -(1+hate)*(disc_rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
     
-    ret.at[row.name, 'plat_profit'] = rh_fare*(sim.platforms.loc[1].comm_rate-disc) if ret.mu[row.name]==1 else 0
+    ret.at[row.name, 'plat_revenue'] = rh_fare*(sim.platforms.loc[1].comm_rate-disc) if ret.mu[row.name]==1 else 0
 
     return rh_U
 

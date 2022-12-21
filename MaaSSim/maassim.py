@@ -91,6 +91,7 @@ class Simulator:
                                     self.params.city))
         self.driver_p = []         
         self.traveller_p = [] 
+        self.daily_marketing = False
         
         # self.income = DotMap() #f#
         # self.income.expected = pd.DataFrame({'veh_id': list(range(1,self.params.nV+1))}).set_index('veh_id') #f#
