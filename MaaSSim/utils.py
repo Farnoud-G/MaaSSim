@@ -162,7 +162,7 @@ def generate_vehicles(_inData, _params, nV):
     vehs.shift_start = 0
     vehs.shift_end = 60 * 60 * 24
     vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
-    vehs['working_U'] = 0.5 #f#
+    vehs['working_U'] = _params.d2d.ini_att #f#
     
     vehs['learning'] = 'on' #f#
     if _params.d2d.heterogeneous: #f#
@@ -189,7 +189,7 @@ def generate_demand(_inData, _params=None, avg_speed=False):
     if _params.d2d.heterogeneous: #f#
         df['exp_utility_eps'] = np.random.gumbel(0, _params.d2d.exp_utility_eps, _params.nP)  #f#
     df['learning'] = 'on' #f#
-    df['rh_U'] = 0.5 #f#
+    df['rh_U'] = _params.d2d.ini_att #f#
     _inData.passengers = df
     requests = pd.DataFrame(index=df.index, columns=_inData.requests.columns)
     distances = _inData.skim[_inData.stats['center']].to_frame().dropna()  # compute distances from center
@@ -276,7 +276,7 @@ def read_requests_csv(_inData,_params, path): #f#
     del df['index']
     
     _inData.passengers = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
-    _inData.passengers['rh_U'] = 0.5
+    _inData.passengers['rh_U'] = _params.d2d.ini_att
     requests = pd.DataFrame(index=_inData.passengers.index, columns=_inData.requests.columns)
     requests.pax_id = _inData.passengers.index
     requests.ride_id = _inData.passengers.index

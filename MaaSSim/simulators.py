@@ -123,14 +123,14 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         print('Day = ', day)
         
         
-        platfrom_profit = sim.res[day-1].pax_kpi.plat_revenue['sum'] # - marketing cost 
+        platfrom_profit = sim.res[day-1].pax_kpi.plat_revenue['sum'] if len(sim.res)>0 else 0 # - marketing cost 
         #Strategy============================================================        
         
         # 1- Trip fare adjustment -------------------------------------------
-        sim.platforms.fare = params.platforms.fare
+        # sim.platforms.fare = params.platforms.fare
         
         # 2- Commission rate adjustment -------------------------------------
-        if 300<=day:
+        if 300==day:
             # sim.platforms.fare[1] = 2 #euro/km
             sim.platforms.comm_rate[1] = 0.50
             print('Tragedy STARTS!')
@@ -156,7 +156,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         #     sim.platforms.fare[1] = 2 #euro/km     
         
         # 4- Marketing adjustment ------------------------------------------
-        sim.daily_marketing = True if len(sim.res) in range(50, 100) else False
+        # sim.daily_marketing = True if len(sim.res) in range(50, 100) else False
         
         #====================================================================
         

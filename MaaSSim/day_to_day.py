@@ -46,11 +46,12 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     # ------------------------------------------------------
     
     EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.EXPERIENCE_U.loc[veh.id]
-    MARKETING_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.MARKETING_U.loc[veh.id]
-    WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.WOM_U.loc[veh.id]
+    MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.MARKETING_U.loc[veh.id]
+    WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.WOM_U.loc[veh.id]
     
     working_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
     not_working_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    
     # print('veh id ', veh.id,'U= ',  working_U)
     veh.veh.working_U = working_U
     
@@ -71,8 +72,8 @@ def S_traveller_opt_out(pax, **kwargs):
         return True
     
     EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPERIENCE_U.loc[pax.id]    
-    MARKETING_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.MARKETING_U.loc[pax.id]
-    WOM_U = 0.5 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.WOM_U.loc[pax.id]
+    MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.MARKETING_U.loc[pax.id]
+    WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.WOM_U.loc[pax.id]
     
     rh_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
     alt_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
@@ -209,7 +210,8 @@ def d2d_kpi_veh(*args,**kwargs):
     
     if len(sim.res) in range(50, 100):
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
-        retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
+        retx['MARKETING_U'] = retx.apply(lambda row: min((1-1e-2),
+                                        max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), 1e-2)), axis=1)
         retx['INFORMED'] = True
         ret.update(retx)
     #--------------------------------------------------------
@@ -333,7 +335,7 @@ def d2d_kpi_pax(*args,**kwargs):
     
     if len(sim.res) in range(50, 100):
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nP))
-        retx['MARKETING_U'] = retx.apply(lambda row: 1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), axis=1)
+        retx['MARKETING_U'] = retx.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), 1e-2)), axis=1)
         retx['INFORMED'] = True
         ret.update(retx)
     #--------------------------------------------------------
