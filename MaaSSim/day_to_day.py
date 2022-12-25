@@ -385,7 +385,7 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
     disc = 0
     
     if sim.pax[row.name].pax.rh_U < 0.5:
-        disc = params.platforms.discount
+        disc = params.platforms.discount #####
     
     if row.name in unfulfilled_requests:
         hate = 1

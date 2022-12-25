@@ -12,7 +12,7 @@ structures = DotMap()
 structures.passengers = pd.DataFrame(columns=['id',
                                               'pos',
                                               'event',
-                                              'platforms']).set_index('id')
+                                              'platform']).set_index('id')
 
 structures.vehicles = pd.DataFrame(columns=['id',
                                             'pos',

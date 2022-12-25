@@ -300,7 +300,8 @@ def read_requests_csv(_inData,_params, path): #f#
     _inData.passengers.pos = _inData.requests.origin.copy()
     _inData.passengers['u_PT'] = _inData.requests.u_PT.copy()
     
-    _inData.passengers.platforms = _inData.passengers.platforms.apply(lambda x: [1])
+    # _inData.passengers.platforms = _inData.passengers.platforms.apply(lambda x: [1])
+    _inData.passengers.platform = 1
     
     return _inData
 

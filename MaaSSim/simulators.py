@@ -91,7 +91,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         from MaaSSim.data_structures import structures
         inData = structures.copy()  # fresh data
     if params is None:
-            params = get_config(config, root_path = kwargs.get('root_path'))  # load from .json file
+        params = get_config(config, root_path = kwargs.get('root_path'))  # load from .json file
     if kwargs.get('make_main_path',False):
         from MaaSSim.utils import make_config_paths
         params = make_config_paths(params, main = kwargs.get('make_main_path',False), rel = True)

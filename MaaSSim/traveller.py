@@ -105,7 +105,9 @@ class PassengerAgent(object):
         self.sim = simData  # reference to the parent Simulator instance
         self.id = pax_id  # reference in the list of simulated passengers
         self.pax = self.sim.inData.passengers.loc[self.id].copy()  # reference to a simulated passenger
-        self.platform_ids = self.pax.platforms  # list of platforms to which traveller is assigned
+        #f self.platform_ids = self.pax.platforms  # list of platforms to which traveller is assigned
+        self.platform_id = self.pax.platform  #f id of a platform
+        self.platform = self.sim.plats[self.platform_id]  #f reference to the platform
 
         self.requests = self.sim.inData.requests[self.sim.inData.requests.pax_id == pax_id]  # assign a requests
         self.request = self.requests.iloc[0]  # for the moment we consider only one request
@@ -198,9 +200,12 @@ class PassengerAgent(object):
                 self.update(event=travellerEvent.REQUESTS_RIDE)
 
                 self.t_matching = self.sim.env.now
-                for platform_id in self.platform_ids:
-                    platform = self.sim.plats[platform_id]
-                    platform.appendReq(self.id)
+                
+                #f for platform_id in self.platform_ids: 
+                #f     platform = self.sim.plats[platform_id]
+                #f     platform.appendReq(self.id)
+                
+                self.platform.appendReq(self.id)  #f appended for the queue
 
                 yield self.sim.timeout(self.sim.params.times.request,
                                        variability=self.sim.vars.request)  # time for transaction
