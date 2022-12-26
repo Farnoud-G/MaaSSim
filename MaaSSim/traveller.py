@@ -175,11 +175,12 @@ class PassengerAgent(object):
 
     def leave_queues(self):
         self.update(event=travellerEvent.LOSES_PATIENCE)
-        for platform_id in self.platform_ids:
-            platform = self.sim.plats[platform_id]
-            if self.request.name in platform.reqQ:
-                platform.reqQ.pop(platform.reqQ.index(self.request.name))
-            platform.updateQs()
+        
+        # for platform_id in self.platform_ids:
+        #     platform = self.sim.plats[platform_id]
+        if self.request.name in self.platform.reqQ:
+            self.platform.reqQ.pop(self.platform.reqQ.index(self.request.name))
+        self.platform.updateQs()
             # platform.resource.release(self.reqs[platform_id])
             # self.reqs[platform_id].cancel()
 
