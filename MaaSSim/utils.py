@@ -163,6 +163,7 @@ def generate_vehicles(_inData, _params, nV):
     vehs.shift_end = 60 * 60 * 24
     vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
     vehs['P1_U'] = _params.d2d.ini_att #f#
+    vehs['P2_U'] = _params.d2d.ini_att
     
     vehs['learning'] = 'on' #f#
     if _params.d2d.heterogeneous: #f#
@@ -277,6 +278,7 @@ def read_requests_csv(_inData,_params, path): #f#
     
     _inData.passengers = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
     _inData.passengers['P1_U'] = _params.d2d.ini_att
+    _inData.passengers['P2_U'] = _params.d2d.ini_att
     requests = pd.DataFrame(index=_inData.passengers.index, columns=_inData.requests.columns)
     requests.pax_id = _inData.passengers.index
     requests.ride_id = _inData.passengers.index
