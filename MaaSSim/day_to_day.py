@@ -203,7 +203,7 @@ def d2d_kpi_veh(*args,**kwargs):
     
     # P2-------------------------------
     ret['pre_P2_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.P2_EXPERIENCE_U
-    ret['P2_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.P1_EXPERIENCE_U
+    ret['P2_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.P2_EXPERIENCE_U
     ret_p2 = ret[ret['platform_id']==2]
     if len(ret_p2)>0:
         ret_p2['P2_EXPERIENCE_U'] = ret_p2.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_P2_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), 1e-2)), axis=1)
@@ -214,7 +214,7 @@ def d2d_kpi_veh(*args,**kwargs):
     # P1-------------------------------
     ret['pre_P1_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.P1_MARKETING_U
     ret['P1_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.P1_MARKETING_U
-    if len(sim.res) in range(50, 100):
+    if platforms.daily_marketing[1]==True:
         ret_p1 = ret.sample(int(params.d2d.diffusion_speed*params.nV))
         ret_p1['P1_MARKETING_U'] = ret_p1.apply(lambda row: min((1-1e-2),
                                         max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_P1_MARKETING_U)-1)+row.pre_P1_MARKETING_U-1))), 1e-2)), axis=1)
@@ -224,7 +224,7 @@ def d2d_kpi_veh(*args,**kwargs):
     # P2-------------------------------
     ret['pre_P2_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.P2_MARKETING_U
     ret['P2_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.P2_MARKETING_U
-    if len(sim.res) in range(50, 100):
+    if platforms.daily_marketing[2]==True:
         ret_p2 = ret.sample(int(params.d2d.diffusion_speed*params.nV))
         ret_p2['P2_MARKETING_U'] = ret_p2.apply(lambda row: min((1-1e-2),
                                         max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_P2_MARKETING_U)-1)+row.pre_P2_MARKETING_U-1))), 1e-2)), axis=1)
@@ -299,6 +299,7 @@ def d2d_kpi_pax(*args,**kwargs):
     params = sim.params
     run_id = kwargs.get('run_id', None)
     simrun = sim.runs[run_id]
+    platforms = sim.platforms
     paxindex = sim.inData.passengers.index
     df = simrun['trips'].copy()  # results of previous simulation
     unfulfilled_requests = list(df[df['event']=='LOSES_PATIENCE'].pax)
@@ -367,7 +368,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['pre_P1_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.P1_MARKETING_U
     ret['P1_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.P1_MARKETING_U
     
-    if len(sim.res) in range(50, 100):
+    if platforms.daily_marketing[1]==True:
         ret_p1 = ret.sample(int(params.d2d.diffusion_speed*params.nP))
         ret_p1['P1_MARKETING_U'] = ret_p1.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_P1_MARKETING_U)-1)+row.pre_P1_MARKETING_U-1))), 1e-2)), axis=1)
         ret_p1['P1_INFORMED'] = True
@@ -377,7 +378,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['pre_P2_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.P2_MARKETING_U
     ret['P2_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.P2_MARKETING_U
     
-    if len(sim.res) in range(50, 100):
+    if platforms.daily_marketing[2]==True:
         ret_p2 = ret.sample(int(params.d2d.diffusion_speed*params.nP))
         ret_p2['P2_MARKETING_U'] = ret_p2.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_P2_MARKETING_U)-1)+row.pre_P2_MARKETING_U-1))), 1e-2)), axis=1)
         ret_p2['P2_INFORMED'] = True
@@ -442,7 +443,7 @@ def P_U_func(row, sim, unfulfilled_requests, ret):
     disc = 0
     
     if sim.pax[row.name].pax['P{}_U'.format(platform_id)] < 0.5:
-        disc = params.platforms.discount #####
+        disc = plat.discount #####
     
     if row.name in unfulfilled_requests:
         hate = 1
@@ -453,7 +454,7 @@ def P_U_func(row, sim, unfulfilled_requests, ret):
     disc_fare = (1-disc)*fare
     P_U = -(1+hate)*(disc_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
     
-    ret.at[row.name, 'plat_revenue'] = fare*(sim.platforms.loc[platform_id].comm_rate-disc) if ret.mu[row.name]==1 else 0
+    ret.at[row.name, 'plat_revenue'] = fare*(plat.comm_rate-disc) if ret.mu[row.name]==1 else 0
 
     return P_U
 
