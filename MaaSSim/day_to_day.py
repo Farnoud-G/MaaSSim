@@ -200,7 +200,7 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
     ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
     
-    ret['EXPERIENCE_U'] = ret.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), 1e-2)), axis=1)
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.learning_d*params.d2d.adj_s*row.inc_dif)), 1e-2)), axis=1)
     
     #--------------------------------------------------------
     """ Utility gained through marketing"""
@@ -208,10 +208,10 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     
-    if len(sim.res) in range(50, 100):
+    if len(sim.res) in range(0, 100):
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
         retx['MARKETING_U'] = retx.apply(lambda row: min((1-1e-2),
-                                        max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), 1e-2)), axis=1)
+             max(1/(1+math.exp(ln((1/row.pre_MARKETING_U)-1)+params.d2d.learning_d*(row.pre_MARKETING_U-1))), 1e-2)), axis=1)
         retx['INFORMED'] = True
         ret.update(retx)
     #--------------------------------------------------------
@@ -235,8 +235,8 @@ def d2d_kpi_veh(*args,**kwargs):
     for tup in tuples:
         v1 = tup[0]
         v2 = tup[1]
-        ret['WOM_U'].loc[v1] = 1/(1+math.exp(params.d2d.learning_d*(ln((1/ret['pre_WOM_U'].loc[v1])-1)+ret['pre_WOM_U'].loc[v1]-sim.vehs[v2].veh.working_U)))
-        ret['WOM_U'].loc[v2] = 1/(1+math.exp(params.d2d.learning_d*(ln((1/ret['pre_WOM_U'].loc[v2])-1)+ret['pre_WOM_U'].loc[v2]-sim.vehs[v1].veh.working_U)))
+        ret['WOM_U'].loc[v1] = 1/(1+math.exp(ln((1/ret['pre_WOM_U'].loc[v1])-1)+params.d2d.learning_d*(ret['pre_WOM_U'].loc[v1]-sim.vehs[v2].veh.working_U)))
+        ret['WOM_U'].loc[v2] = 1/(1+math.exp(ln((1/ret['pre_WOM_U'].loc[v2])-1)+params.d2d.learning_d*(ret['pre_WOM_U'].loc[v2]-sim.vehs[v1].veh.working_U)))
         if (ret['INFORMED'].loc[v1] == False and ret['INFORMED'].loc[v2] == True) | (ret['INFORMED'].loc[v2] == False and ret['INFORMED'].loc[v1] == True):
             ret['INFORMED'].loc[v1] = True
             ret['INFORMED'].loc[v2] = True
@@ -325,7 +325,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['alt_U'] = ret.apply(lambda row: sim.pax[row.name].pax.u_PT, axis=1)
     ret['U_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['alt_U']-row['rh_U'])/abs(row['alt_U']), axis=1)
     
-    ret['EXPERIENCE_U'] = ret.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.adj_s*row.U_dif))), 1e-2)), axis=1)
+    ret['EXPERIENCE_U'] = ret.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.learning_d*params.d2d.adj_s*row.U_dif)), 1e-2)), axis=1)
     
     #--------------------------------------------------------
     """ Utility gained through marketing"""
@@ -333,9 +333,9 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     
-    if len(sim.res) in range(50, 100):
+    if len(sim.res) in range(0, 100):
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nP))
-        retx['MARKETING_U'] = retx.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_MARKETING_U)-1)+row.pre_MARKETING_U-1))), 1e-2)), axis=1)
+        retx['MARKETING_U'] = retx.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(ln((1/row.pre_MARKETING_U)-1)+params.d2d.learning_d*(row.pre_MARKETING_U-1))), 1e-2)), axis=1)
         retx['INFORMED'] = True
         ret.update(retx)
     #--------------------------------------------------------
@@ -359,8 +359,8 @@ def d2d_kpi_pax(*args,**kwargs):
     for tup in tuples:
         p1 = tup[0]
         p2 = tup[1]
-        ret['WOM_U'].loc[p1] = 1/(1+math.exp(params.d2d.learning_d*(ln((1/ret['pre_WOM_U'].loc[p1])-1)+ret['pre_WOM_U'].loc[p1]-sim.pax[p2].pax.rh_U)))
-        ret['WOM_U'].loc[p2] = 1/(1+math.exp(params.d2d.learning_d*(ln((1/ret['pre_WOM_U'].loc[p2])-1)+ret['pre_WOM_U'].loc[p2]-sim.pax[p1].pax.rh_U)))
+        ret['WOM_U'].loc[p1] = 1/(1+math.exp(ln((1/ret['pre_WOM_U'].loc[p1])-1)+params.d2d.learning_d*(ret['pre_WOM_U'].loc[p1]-sim.pax[p2].pax.rh_U)))
+        ret['WOM_U'].loc[p2] = 1/(1+math.exp(ln((1/ret['pre_WOM_U'].loc[p2])-1)+params.d2d.learning_d*(ret['pre_WOM_U'].loc[p2]-sim.pax[p1].pax.rh_U)))
         if (ret['INFORMED'].loc[p1] == False and ret['INFORMED'].loc[p2] == True) | (ret['INFORMED'].loc[p2] == False and ret['INFORMED'].loc[p1] == True):
             ret['INFORMED'].loc[p1] = True
             ret['INFORMED'].loc[p2] = True

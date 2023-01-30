@@ -146,7 +146,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
 
         # 3- Discount adjustment -------------------------------------------
         # params.platforms.discount = 0.20 if 300<=day<350 else 0
-        if 25<=day<200:
+        if 100<=day<200:
             params.platforms.discount = 0.40
         else:
             params.platforms.discount = 0
