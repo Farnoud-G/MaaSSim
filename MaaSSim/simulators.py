@@ -134,15 +134,6 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
             # sim.platforms.fare[1] = 2 #euro/km
             sim.platforms.comm_rate[1] = 0.50
             print('Tragedy STARTS!')
-            
-        # if 150<=day<250:
-        #     sim.platforms.comm_rate[1] = 0.20
-        # elif 250<=day<350:
-        #     sim.platforms.comm_rate[1] = 0.50
-        # elif 350<=day:
-        #     sim.platforms.comm_rate[1] = 0.20
-        # else:
-        #     sim.platforms.comm_rate[1] = 0.0
 
         # 3- Discount adjustment -------------------------------------------
         # params.platforms.discount = 0.20 if 300<=day<350 else 0
@@ -151,10 +142,6 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         else:
             params.platforms.discount = 0
             
-        # if day==100:
-        #     sim.platforms.comm_rate[1] = 0.15
-        #     sim.platforms.fare[1] = 2 #euro/km     
-        
         # 4- Marketing adjustment ------------------------------------------
         # sim.daily_marketing = True if len(sim.res) in range(50, 100) else False
         
