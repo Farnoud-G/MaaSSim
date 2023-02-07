@@ -271,6 +271,7 @@ def d2d_kpi_pax(*args,**kwargs):
     params = sim.params
     run_id = kwargs.get('run_id', None)
     simrun = sim.runs[run_id]
+    platforms = sim.platforms
     paxindex = sim.inData.passengers.index
     df = simrun['trips'].copy()  # results of previous simulation
     unfulfilled_requests = list(df[df['event']=='LOSES_PATIENCE'].pax)

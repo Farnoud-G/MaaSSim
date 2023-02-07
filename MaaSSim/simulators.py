@@ -143,7 +143,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
             params.platforms.discount = 0
             
         # 4- Marketing adjustment ------------------------------------------
-        # sim.daily_marketing = True if len(sim.res) in range(50, 100) else False
+        sim.platforms.daily_marketing[1] = True if len(sim.res) in range(0, 100) else False
         
         #====================================================================
         
