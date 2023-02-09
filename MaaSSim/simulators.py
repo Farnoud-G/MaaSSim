@@ -3,7 +3,7 @@
 # Description: Wrappers to prepare and run simulations
 # Rafal Kucharski @ TU Delft
 ################################################################################
-
+import numpy as np
 
 from MaaSSim.maassim import Simulator
 from MaaSSim.shared import prep_shared_rides
@@ -13,6 +13,8 @@ import pandas as pd
 from scipy.optimize import brute
 import logging
 import re
+
+from dqn import DQNAgent
 
 
 def single_pararun(one_slice, *args):
