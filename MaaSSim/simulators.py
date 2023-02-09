@@ -539,7 +539,7 @@ def simulate_tune3(config="data/config.json", inData=None, params=None, **kwargs
             params.platforms.discount = 0
 
         if day == 100:
-            sim.platforms.fare[1] = 2  # euro/km
+            sim.platforms.fare[1] = 2  # euro/km  
         # ====================================================================
 
         sim.make_and_run(run_id=day)  # prepare and SIM
