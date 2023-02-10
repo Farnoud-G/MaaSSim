@@ -226,7 +226,8 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
     revs = []
 
     for day in range(params.get('nD', 1)):  # run iterations
-        # print('Day = ', day)
+
+        print('---------------->', 'day:', day, 'of', params.get('nD', 1), '<--------------------')
 
         # number of active passengers out of All passengers
         nP = 0 if day == 0 else sim.res[day - 1].pax_exp.OUT.value_counts().get(False, 0)
@@ -235,17 +236,14 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
         state = np.asarray([nP, nV])
         state = np.reshape(state, [1, state_size])
 
-        print('-------->', 'iter:', day, 'of', params.get('nD', 1), '<--------')
-
+        ####Here model selects action base on current state
         action = agent.act(state)
 
-        print('action: ', str(action), 'comm_rate: ', str(sim.platforms.comm_rate[1]))
-
-        if (action == 0):
+        if action == 0:
             sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1] + stp if sim.platforms.comm_rate[1] + stp < 1 else 1
-        elif (action == 1):
+        elif action == 1:
             sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1] - stp if sim.platforms.comm_rate[1] - stp > 0 else 0
-        elif (action == 2):
+        elif action == 2:
             sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1]
 
         sim.platforms.comm_rate[1] = round(sim.platforms.comm_rate[1], 2)
@@ -276,15 +274,19 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
         sim.make_and_run(run_id=day)  # prepare and SIM
         sim.output()  # calc results
 
-        print('new_comm_rate={} , current_state={} '.format(sim.platforms.comm_rate[1], str(state) ))
+        # print('action={} , new_comm_rate={} , current_state={} '.format(str(action),sim.platforms.comm_rate[1], str(state) ))
 
-        next_state = state
+        nP = 0 if day == 0 else sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
+        nV = 0 if day == 0 else sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
+        next_state = np.asarray([nP, nV])
+        next_state = np.reshape(next_state, [1, state_size])
+
+        # next_state = state
 
         reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing cost
         revs.append(reward)
 
         agent.memorize(state, action, reward, next_state, done)
-        state = next_state
 
         print(str(action) + ',' + str(sim.platforms.comm_rate[1]) + ',' + str(reward) + ' state:' + str(state))
 
