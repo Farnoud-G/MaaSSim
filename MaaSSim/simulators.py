@@ -214,8 +214,12 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
     stp = 0.01 if 'stp' not in kwargs else float(kwargs['stp'])
 
     f = open(kwargs['file_res'], 'a')
+    f.write('====================================================================')
+    f.write('====================================================================')
     f.write('New simulation started at:    ' + str(datetime.datetime.now()) + '\n')
     f.write('act_size:    ' + str(action_size) + '\n')
+    f.write('====================================================================')
+    f.write('====================================================================')
     f.write(','.join(['day','nP','nV','Action','Commrate','fare','discount','daily_marketing','reward','new_nV','new_nP']) + '\n')
     f.close()
 
