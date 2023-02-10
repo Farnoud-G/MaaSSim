@@ -155,6 +155,129 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
     return sim
 
 
+
+def simulate_baseline(config="data/config.json", inData=None, params=None, **kwargs):
+    """
+    main runner and wrapper
+    loads or uses json config to prepare the data for simulation, run it and process the results
+    :param config: .json file path
+    :param inData: optional input data
+    :param params: loaded json file
+    :param kwargs: optional arguments
+    :return: simulation object with results
+    """
+
+    if inData is None:  # otherwise we use what is passed
+        from MaaSSim.data_structures import structures
+        inData = structures.copy()  # fresh data
+    if params is None:
+        params = get_config(config, root_path=kwargs.get('root_path'))  # load from .json file
+    if kwargs.get('make_main_path', False):
+        from MaaSSim.utils import make_config_paths
+        params = make_config_paths(params, main=kwargs.get('make_main_path', False), rel=True)
+
+    if params.paths.get('vehicles', False):
+        inData = read_vehicle_positions(inData, path=params.paths.vehicles)
+
+    if len(inData.G) == 0:  # only if no graph in input
+        inData = load_G(inData, params, stats=True)  # download graph for the 'params.city' and calc the skim matrices
+
+    if params.paths.get('requests', False):
+        inData = read_requests_csv(inData, params, path=params.paths.requests)
+
+    if len(inData.passengers) == 0:  # only if no passengers in input
+        inData = generate_demand(inData, params, avg_speed=True)
+    if len(inData.vehicles) == 0:  # only if no vehicles in input
+        inData.vehicles = generate_vehicles(inData, params, params.nV)
+    if len(inData.platforms) == 0:  # only if no platforms in input
+        # inData.platforms = initialize_df(inData.platforms)
+        # inData.platforms.loc[0] = empty_series(inData.platforms)
+        # inData.platforms.fare = [1]
+        inData.platforms = generate_platforms(inData, params, params.get('nPM', 1))
+
+    inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
+
+
+    sim = Simulator(inData, params=params, **kwargs)  # initialize
+
+    f = open(kwargs['file_res'], 'a')
+    f.write('====================================================================\n')
+    f.write('====================================================================\n')
+    f.write('New simulation started at:    ' + str(datetime.datetime.now()) + '\n')
+    f.write('Baseline: ' +'\n')
+    f.write('====================================================================\n')
+    f.write('====================================================================\n')
+    f.write(','.join(
+        ['day', 'nP', 'nV', 'Commrate', 'fare', 'discount', 'daily_marketing', 'reward', 'new_nV',
+         'new_nP']) + '\n')
+    f.close()
+
+    state_size=2
+
+    revs=[]
+
+    for day in range(params.get('nD', 1)):  # run iterations
+        print('Day = ', day)
+
+        print('---------------->', 'day:', day, 'of', params.get('nD', 1), '<--------------------')
+
+        # number of active passengers out of All passengers
+        nP = 0 if day == 0 else sim.res[day - 1].pax_exp.OUT.value_counts().get(False, 0)
+        # number of active drivers out of All drivers
+        nV = 0 if day == 0 else sim.res[day - 1].veh_exp.OUT.value_counts().get(False, 0)
+        state = np.asarray([nP, nV])
+        state = np.reshape(state, [1, state_size])
+
+        # Strategy============================================================
+
+        # 1- Trip fare adjustment -------------------------------------------
+        # sim.platforms.fare = params.platforms.fare
+
+        # 2- Commission rate adjustment -------------------------------------
+        if 300 == day:
+            # sim.platforms.fare[1] = 2 #euro/km
+            sim.platforms.comm_rate[1] = 0.50
+            print('Tragedy STARTS!')
+
+        # 3- Discount adjustment -------------------------------------------
+        # params.platforms.discount = 0.20 if 300<=day<350 else 0
+        if 100 <= day < 200:
+            params.platforms.discount = 0.40
+        else:
+            params.platforms.discount = 0
+
+        # 4- Marketing adjustment ------------------------------------------
+        sim.platforms.daily_marketing[1] = True if len(sim.res) in range(0, 100) else False
+
+        # ====================================================================
+
+        sim.make_and_run(run_id=day)  # prepare and SIM
+        sim.output()  # calc results
+
+
+        # Calculating new state
+        nP = 0 if day == 0 else sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
+        nV = 0 if day == 0 else sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
+        next_state = np.asarray([nP, nV])
+        next_state = np.reshape(next_state, [1, state_size])
+
+        reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing cost
+        reward=np.round(reward,2)
+        revs.append(reward)
+
+        print('day: ',day,' nP: ',state[0][0],'  nV: ', state[0][1],' Commrate: ', sim.platforms.comm_rate[1],' fare: ', sim.platforms.fare.iloc[0],
+           ' discount: ', params.platforms.discount,' daily_marketing: ', sim.platforms.daily_marketing[1], ' reward: ',reward,' new nV: ', next_state[0][0], ' new nP: ',next_state[0][1])
+
+        f = open(kwargs['file_res'], 'a')
+        f.write(str(day)+','+str(state[0][0]) + ',' + str(state[0][1]) + ',' + str(sim.platforms.comm_rate[
+            1]) + ',' + str(sim.platforms.fare.iloc[0]) + ',' + str(params.platforms.discount) + ',' + str(sim.platforms.daily_marketing[
+                    1]) + ',' + str(reward) + ',' + str(next_state[0][0]) + ',' + str(next_state[0][1]) + '\n')
+        f.close()
+        if sim.functions.f_stop_crit(sim=sim):
+            break
+    return sim
+
+
 def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **kwargs):
     """
     main runner and wrapper
