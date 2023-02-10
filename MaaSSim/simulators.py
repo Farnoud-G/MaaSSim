@@ -216,6 +216,7 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
     f = open(kwargs['file_res'], 'a')
     f.write('New simulation started at:    ' + str(datetime.datetime.now()) + '\n')
     f.write('act_size:    ' + str(action_size) + '\n')
+    f.write(','.join(['nP','nV','Action','Commrate','fare','discount','daily_marketing','reward','new_nV','new_nP']) + '\n')
     f.close()
 
     print('stp is: ', stp)
@@ -274,6 +275,7 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
         next_state = np.reshape(next_state, [1, state_size])
 
         reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing cost
+        reward=np.round(reward,2)
         revs.append(reward)
 
         agent.memorize(state, action, reward, next_state, done)
