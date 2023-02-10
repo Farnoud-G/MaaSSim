@@ -236,28 +236,21 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
         state = np.asarray([nP, nV])
         state = np.reshape(state, [1, state_size])
 
-        ####Here model selects action base on current state
-        action = agent.act(state)
-
-        if action == 0:
-            sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1] + stp if sim.platforms.comm_rate[1] + stp < 1 else 1
-        elif action == 1:
-            sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1] - stp if sim.platforms.comm_rate[1] - stp > 0 else 0
-        elif action == 2:
-            sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1]
-
-        sim.platforms.comm_rate[1] = round(sim.platforms.comm_rate[1], 2)
-
         # Strategy============================================================
 
         # 1- Trip fare adjustment -------------------------------------------
         # sim.platforms.fare = params.platforms.fare
 
         # 2- Commission rate adjustment -------------------------------------
-        # if 300 == day:
-        #     # sim.platforms.fare[1] = 2 #euro/km
-        #     sim.platforms.comm_rate[1] = 0.50
-        #     print('Tragedy STARTS!')
+        # Here model selects action base on current state
+        action = agent.act(state)
+        if action == 0:
+            sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1] + stp if sim.platforms.comm_rate[1] + stp < 1 else 1
+        elif action == 1:
+            sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1] - stp if sim.platforms.comm_rate[1] - stp > 0 else 0
+        elif action == 2:
+            sim.platforms.comm_rate[1] = sim.platforms.comm_rate[1]
+        sim.platforms.comm_rate[1] = round(sim.platforms.comm_rate[1], 2)
 
         # 3- Discount adjustment -------------------------------------------
         # params.platforms.discount = 0.20 if 300<=day<350 else 0
@@ -274,24 +267,24 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
         sim.make_and_run(run_id=day)  # prepare and SIM
         sim.output()  # calc results
 
-        # print('action={} , new_comm_rate={} , current_state={} '.format(str(action),sim.platforms.comm_rate[1], str(state) ))
-
+        # Calculating new state
         nP = 0 if day == 0 else sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
         nV = 0 if day == 0 else sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
         next_state = np.asarray([nP, nV])
         next_state = np.reshape(next_state, [1, state_size])
-
-        # next_state = state
 
         reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing cost
         revs.append(reward)
 
         agent.memorize(state, action, reward, next_state, done)
 
-        print(str(action) + ',' + str(sim.platforms.comm_rate[1]) + ',' + str(reward) + ' state:' + str(state))
+        print('nP: ',state[0][0],'  nV: ', state[0][1],' Action: ', action,' Commrate: ', sim.platforms.comm_rate[1],' fare: ', sim.platforms.fare.iloc[0],
+           ' discount: ', params.platforms.discount,' daily_marketing: ', sim.platforms.daily_marketing[1], ' reward: ',reward,' new nV: ', next_state[0][0], ' new nP: ',next_state[0][1])
 
         f = open(kwargs['file_res'], 'a')
-        f.write(str(action) + ',' + str(sim.platforms.comm_rate[1]) + ',' + str(reward) + ' state:' + str(state) + '\n')
+        f.write(str(state[0][0]) + ',' + str(state[0][1]) + ',' + str(action) + ',' + str(sim.platforms.comm_rate[
+            1]) + ',' + str(sim.platforms.fare.iloc[0]) + ',' + str(params.platforms.discount) + ',' + str(sim.platforms.daily_marketing[
+                    1]) + ',' + str(reward) + ',' + str(next_state[0][0]) + ',' + str(next_state[0][1]) + '\n')
         f.close()
 
         if sim.functions.f_stop_crit(sim=sim):
