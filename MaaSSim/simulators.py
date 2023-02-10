@@ -216,7 +216,7 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
     f = open(kwargs['file_res'], 'a')
     f.write('New simulation started at:    ' + str(datetime.datetime.now()) + '\n')
     f.write('act_size:    ' + str(action_size) + '\n')
-    f.write(','.join(['nP','nV','Action','Commrate','fare','discount','daily_marketing','reward','new_nV','new_nP']) + '\n')
+    f.write(','.join(['day','nP','nV','Action','Commrate','fare','discount','daily_marketing','reward','new_nV','new_nP']) + '\n')
     f.close()
 
     print('stp is: ', stp)
@@ -280,11 +280,11 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
 
         agent.memorize(state, action, reward, next_state, done)
 
-        print('nP: ',state[0][0],'  nV: ', state[0][1],' Action: ', action,' Commrate: ', sim.platforms.comm_rate[1],' fare: ', sim.platforms.fare.iloc[0],
+        print('day: ',day,' nP: ',state[0][0],'  nV: ', state[0][1],' Action: ', action,' Commrate: ', sim.platforms.comm_rate[1],' fare: ', sim.platforms.fare.iloc[0],
            ' discount: ', params.platforms.discount,' daily_marketing: ', sim.platforms.daily_marketing[1], ' reward: ',reward,' new nV: ', next_state[0][0], ' new nP: ',next_state[0][1])
 
         f = open(kwargs['file_res'], 'a')
-        f.write(str(state[0][0]) + ',' + str(state[0][1]) + ',' + str(action) + ',' + str(sim.platforms.comm_rate[
+        f.write(str(day)+','+str(state[0][0]) + ',' + str(state[0][1]) + ',' + str(action) + ',' + str(sim.platforms.comm_rate[
             1]) + ',' + str(sim.platforms.fare.iloc[0]) + ',' + str(params.platforms.discount) + ',' + str(sim.platforms.daily_marketing[
                     1]) + ',' + str(reward) + ',' + str(next_state[0][0]) + ',' + str(next_state[0][1]) + '\n')
         f.close()
