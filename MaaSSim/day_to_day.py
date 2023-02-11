@@ -16,12 +16,13 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     params = sim.params
     RW_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     alts_u = {'RW': RW_U}
+    alts_x = {'RW':1, 'P1':0, 'P2':0}
     alts_p = {'RW':1, 'P1':0, 'P2':0}
     
     # P1 utilization-------------------------------------------------------------------
     p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_INFORMED.loc[veh.id]
     if p1_informed==True:
-
+        
         P1_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_EXPERIENCE_U.loc[veh.id]
         P1_MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_MARKETING_U.loc[veh.id]
         P1_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_WOM_U.loc[veh.id]
@@ -45,30 +46,45 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         veh.veh.P2_U = P2_U
     
     #-----------------------------------------------------------------------------------
-    if len(alts_u) == 1:
-        return True  # there is only one choice RW
-    else:
-        # if params.d2d.probabilistic:
-        
+    if len(alts_u) == 1: # there is only one choice RW
+        return True  
+    
+    elif len(alts_u) == 2: # MNL
         for k in alts_p:
-            if alts_p[k]!=0:
-                alts_p[k] = math.exp(params.d2d.m*alts_u[k])/sum([math.exp(params.d2d.m*alts_u[_]) for _ in alts_u])
-        rand_v = random.uniform(0,1)
+            if alts_p[k] == 1:
+                alts_x[k] = math.exp(params.d2d.m*alts_u[k])
+        for k in alts_p:
+            if alts_p[k] == 1:
+                alts_p[k] = alts_x[k]/sum(alts_x.values())
+            
+    elif len(alts_u) == 3: # Nested Logit (NL)
+        sum_xm = math.exp(params.d2d.mn*alts_u['P1']) + math.exp(params.d2d.mn*alts_u['P2'])
+        w = (1/params.d2d.mn)*ln(sum_xm)             # RH satisfaction - Logsum
+        p1_pm = math.exp(params.d2d.mn*alts_u['P1'])/sum_xm
+        p2_pm = math.exp(params.d2d.mn*alts_u['P2'])/sum_xm
         
-        # print('veh_id = ', veh.id,' rand_v = ', rand_v)
-        # print(alts_p)
-        if rand_v <= alts_p['RW']:
-            return True  # opts for RW
-        elif rand_v <= alts_p['RW'] + alts_p['P1']:
-            veh.platform_id = 1
-            veh.veh.platform = 1  # opts for platform number 1
-            veh.platform = veh.sim.plats[veh.veh.platform]
-            return False
-        else:
-            veh.platform_id = 2
-            veh.veh.platform = 2  # opts for platform number 2
-            veh.platform = veh.sim.plats[veh.veh.platform]
-            return False
+        alts_p['RW'] = math.exp(params.d2d.m*alts_u['RW'])/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w))
+        
+        alts_p['P1'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w)))*p1_pm
+        alts_p['P2'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w)))*p2_pm
+    
+    else:
+        print('ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR')
+    #-----------------------
+    rand_v = random.uniform(0,1)
+
+    if rand_v <= alts_p['RW']:
+        return True  # opts for RW
+    elif rand_v <= alts_p['RW'] + alts_p['P1']:
+        veh.platform_id = 1
+        veh.veh.platform = 1  # opts for platform number 1
+        veh.platform = veh.sim.plats[veh.veh.platform]
+        return False
+    else:
+        veh.platform_id = 2
+        veh.veh.platform = 2  # opts for platform number 2
+        veh.platform = veh.sim.plats[veh.veh.platform]
+        return False
 
 
 def S_traveller_opt_out(pax, **kwargs):
@@ -77,6 +93,7 @@ def S_traveller_opt_out(pax, **kwargs):
     params = sim.params
     PT_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     alts_u = {'PT': PT_U}
+    alts_x = {'PT':1, 'P1':0, 'P2':0}
     alts_p = {'PT':1, 'P1':0, 'P2':0}
     
     #P1 utilization---------------------------------------------------------------------
@@ -103,28 +120,47 @@ def S_traveller_opt_out(pax, **kwargs):
         alts_u['P2'] = P2_U
         alts_p['P2'] = 1
         pax.pax.P2_U = P2_U
+        
     #-----------------------------------------------------------------------------------
-    if len(alts_u) == 1:
-        return True  # there is only one choice PT
-    else:
-        # if params.d2d.probabilistic:
+    if len(alts_u) == 1: # there is only one choice RW
+        return True  
+    
+    elif len(alts_u) == 2: # MNL
         for k in alts_p:
-            if alts_p[k]!=0:
-                alts_p[k] = math.exp(params.d2d.m*alts_u[k])/sum([math.exp(params.d2d.m*alts_u[_]) for _ in alts_u])
-        rand_v = random.uniform(0,1)
+            if alts_p[k] == 1:
+                alts_x[k] = math.exp(params.d2d.m*alts_u[k])
+        for k in alts_p:
+            if alts_p[k] == 1:
+                alts_p[k] = alts_x[k]/sum(alts_x.values())
+            
+    elif len(alts_u) == 3: # Nested Logit (NL)
+        sum_xm = math.exp(params.d2d.mn*alts_u['P1']) + math.exp(params.d2d.mn*alts_u['P2'])
+        w = (1/params.d2d.mn)*ln(sum_xm)             # RH satisfaction - Logsum
+        p1_pm = math.exp(params.d2d.mn*alts_u['P1'])/sum_xm
+        p2_pm = math.exp(params.d2d.mn*alts_u['P2'])/sum_xm
+        
+        alts_p['PT'] = math.exp(params.d2d.m*alts_u['PT'])/(math.exp(params.d2d.m*alts_u['PT'])+math.exp(params.d2d.m*w))
+        
+        alts_p['P1'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['PT'])+math.exp(params.d2d.m*w)))*p1_pm
+        alts_p['P2'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['PT'])+math.exp(params.d2d.m*w)))*p2_pm
+    
+    else:
+        print('ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR')
+    #-----------------------
+    rand_v = random.uniform(0,1)
 
-        if rand_v <= alts_p['PT']:
-            return True  # opts for PT
-        elif rand_v <= alts_p['PT'] + alts_p['P1']:
-            pax.platform_id = 1
-            pax.pax.platform = 1  # opts for platform number 1
-            pax.platform = pax.sim.plats[pax.pax.platform]
-            return False
-        else:
-            pax.platform_id = 2
-            pax.pax.platform = 2  # opts for platform number 2
-            pax.platform = pax.sim.plats[pax.pax.platform]
-            return False
+    if rand_v <= alts_p['PT']:
+        return True  # opts for PT
+    elif rand_v <= alts_p['PT'] + alts_p['P1']:
+        pax.platform_id = 1
+        pax.pax.platform = 1  # opts for platform number 1
+        pax.platform = pax.sim.plats[pax.pax.platform]
+        return False
+    else:
+        pax.platform_id = 2
+        pax.pax.platform = 2  # opts for platform number 2
+        pax.platform = pax.sim.plats[pax.pax.platform]
+        return False
 
     
 def d2d_kpi_veh(*args,**kwargs):
