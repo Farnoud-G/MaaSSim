@@ -15,10 +15,11 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     sim = veh.sim
     params = sim.params
     RW_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
-    alts_u = {'RW': RW_U}
-    alts_x = {'RW':1, 'P1':0, 'P2':0}
-    alts_p = {'RW':1, 'P1':0, 'P2':0}
-    
+    alts_u = {'RW': RW_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_x = {'RW': 'Nan', 'P1': 'Nan', 'P2': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_p = {'RW': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    nPM = 0
+
     # P1 utilization-------------------------------------------------------------------
     p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_INFORMED.loc[veh.id]
     if p1_informed==True:
@@ -28,8 +29,8 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         P1_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_WOM_U.loc[veh.id]
         
         P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
-        alts_u['P1'] = P1_U
-        alts_p['P1'] = 1
+        alts_u['plats']['P1'] = P1_U
+        nPM += 1
         veh.veh.P1_U = P1_U
     
     #P2 utilization---------------------------------------------------------------------
@@ -41,36 +42,32 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         P2_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_WOM_U.loc[veh.id]
         
         P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
-        alts_u['P2'] = P2_U
-        alts_p['P2'] = 1
+        alts_u['plats']['P2'] = P2_U
+        nPM += 1
         veh.veh.P2_U = P2_U
     
-    #-----------------------------------------------------------------------------------
-    if len(alts_u) == 1: # there is only one choice RW
+    #=====================================================================================
+    if nPM == 0: # there is only one choice RW
         return True  
-    
-    elif len(alts_u) == 2: # MNL
-        for k in alts_p:
-            if alts_p[k] == 1:
-                alts_x[k] = math.exp(params.d2d.m*alts_u[k])
-        for k in alts_p:
-            if alts_p[k] == 1:
-                alts_p[k] = alts_x[k]/sum(alts_x.values())
             
-    elif len(alts_u) == 3: # Nested Logit (NL)
-        sum_xm = math.exp(params.d2d.mn*alts_u['P1']) + math.exp(params.d2d.mn*alts_u['P2'])
-        w = (1/params.d2d.mn)*ln(sum_xm)             # RH satisfaction - Logsum
-        p1_pm = math.exp(params.d2d.mn*alts_u['P1'])/sum_xm
-        p2_pm = math.exp(params.d2d.mn*alts_u['P2'])/sum_xm
-        
-        alts_p['RW'] = math.exp(params.d2d.m*alts_u['RW'])/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w))
-        
-        alts_p['P1'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w)))*p1_pm
-        alts_p['P2'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w)))*p2_pm
-    
-    else:
-        print('ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR')
-    #-----------------------
+    else: # Nested Logit (NL)
+        for p in alts_u['plats']: # calculate X in platform nest
+            alts_x['plats'][p] = math.exp(params.d2d.mn*alts_u['plats'][p]) if alts_u['plats'][p]!= 'Nan' else 0
+
+        w = (1/params.d2d.mn)*ln(sum(alts_x['plats'].values()))    # RH satisfaction - Logsum
+        for p in alts_u['plats']: # calculate probability in platform nest
+            alts_p['plats'][p] = alts_x['plats'][p]/sum(alts_x['plats'].values())
+            alts_u[p] = w if alts_u['plats'][p]!= 'Nan' else 'Nan'
+
+        alts_x.pop('plats', None)
+        for alt in alts_x:
+            alts_x[alt] = math.exp(params.d2d.m*alts_u[alt]) if alts_u[alt]!= 'Nan' else 0
+
+        x_w = math.exp(params.d2d.m*w)
+        for alt in alts_x:
+            alts_p[alt] = (alts_x[alt]/(alts_x['RW'] + x_w))*alts_p['plats'][alt] if alt!='RW' else alts_x[alt]/(alts_x['RW'] + x_w)
+
+    #=====================================================================================
     rand_v = random.uniform(0,1)
 
     if rand_v <= alts_p['RW']:
@@ -92,9 +89,11 @@ def S_traveller_opt_out(pax, **kwargs):
     sim = pax.sim
     params = sim.params
     PT_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
-    alts_u = {'PT': PT_U}
-    alts_x = {'PT':1, 'P1':0, 'P2':0}
-    alts_p = {'PT':1, 'P1':0, 'P2':0}
+    
+    alts_u = {'PT': PT_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_x = {'PT': 'Nan', 'P1': 'Nan', 'P2': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_p = {'PT': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    nPM = 0
     
     #P1 utilization---------------------------------------------------------------------
     p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_INFORMED.loc[pax.id]
@@ -105,9 +104,10 @@ def S_traveller_opt_out(pax, **kwargs):
         P1_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_WOM_U.loc[pax.id]
     
         P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
-        alts_u['P1'] = P1_U
-        alts_p['P1'] = 1
+        alts_u['plats']['P1'] = P1_U
+        nPM += 1
         pax.pax.P1_U = P1_U
+        
     #P2 utilization---------------------------------------------------------------------
     p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_INFORMED.loc[pax.id]
     if p2_informed==True:
@@ -117,36 +117,32 @@ def S_traveller_opt_out(pax, **kwargs):
         P2_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_WOM_U.loc[pax.id]
     
         P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
-        alts_u['P2'] = P2_U
-        alts_p['P2'] = 1
+        alts_u['plats']['P2'] = P2_U
+        nPM += 1
         pax.pax.P2_U = P2_U
         
-    #-----------------------------------------------------------------------------------
-    if len(alts_u) == 1: # there is only one choice RW
-        return True  
-    
-    elif len(alts_u) == 2: # MNL
-        for k in alts_p:
-            if alts_p[k] == 1:
-                alts_x[k] = math.exp(params.d2d.m*alts_u[k])
-        for k in alts_p:
-            if alts_p[k] == 1:
-                alts_p[k] = alts_x[k]/sum(alts_x.values())
+    #=====================================================================================
+    if nPM == 0: # there is only one choice RW
+        return True   
             
-    elif len(alts_u) == 3: # Nested Logit (NL)
-        sum_xm = math.exp(params.d2d.mn*alts_u['P1']) + math.exp(params.d2d.mn*alts_u['P2'])
-        w = (1/params.d2d.mn)*ln(sum_xm)             # RH satisfaction - Logsum
-        p1_pm = math.exp(params.d2d.mn*alts_u['P1'])/sum_xm
-        p2_pm = math.exp(params.d2d.mn*alts_u['P2'])/sum_xm
-        
-        alts_p['PT'] = math.exp(params.d2d.m*alts_u['PT'])/(math.exp(params.d2d.m*alts_u['PT'])+math.exp(params.d2d.m*w))
-        
-        alts_p['P1'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['PT'])+math.exp(params.d2d.m*w)))*p1_pm
-        alts_p['P2'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['PT'])+math.exp(params.d2d.m*w)))*p2_pm
+    else: # Nested Logit (NL)
+        for p in alts_u['plats']: # calculate X in platform nest
+            alts_x['plats'][p] = math.exp(params.d2d.mn*alts_u['plats'][p]) if alts_u['plats'][p]!= 'Nan' else 0
+
+        w = (1/params.d2d.mn)*ln(sum(alts_x['plats'].values()))    # RH satisfaction - Logsum
+        for p in alts_u['plats']: # calculate probability in platform nest
+            alts_p['plats'][p] = alts_x['plats'][p]/sum(alts_x['plats'].values())
+            alts_u[p] = w if alts_u['plats'][p]!= 'Nan' else 'Nan'
+
+        alts_x.pop('plats', None)
+        for alt in alts_x:
+            alts_x[alt] = math.exp(params.d2d.m*alts_u[alt]) if alts_u[alt]!= 'Nan' else 0
+
+        x_w = math.exp(params.d2d.m*w)
+        for alt in alts_x:
+            alts_p[alt] = (alts_x[alt]/(alts_x['PT'] + x_w))*alts_p['plats'][alt] if alt!='PT' else alts_x[alt]/(alts_x['PT'] + x_w)
     
-    else:
-        print('ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR')
-    #-----------------------
+    #=====================================================================================
     rand_v = random.uniform(0,1)
 
     if rand_v <= alts_p['PT']:
@@ -526,3 +522,28 @@ def my_function(veh, **kwargs): # user defined function to represent agent decis
         return True
     else:
         return False
+    
+    
+    
+    
+#     elif len(alts_u) == 2: # MNL
+#         for k in alts_p:
+#             if alts_p[k] == 1:
+#                 alts_x[k] = math.exp(params.d2d.m*alts_u[k])
+#         for k in alts_p:
+#             if alts_p[k] == 1:
+#                 alts_p[k] = alts_x[k]/sum(alts_x.values())
+            
+#     elif len(alts_u) == 3: # Nested Logit (NL)
+#         sum_xm = math.exp(params.d2d.mn*alts_u['P1']) + math.exp(params.d2d.mn*alts_u['P2'])
+#         w = (1/params.d2d.mn)*ln(sum_xm)             # RH satisfaction - Logsum
+#         p1_pm = math.exp(params.d2d.mn*alts_u['P1'])/sum_xm
+#         p2_pm = math.exp(params.d2d.mn*alts_u['P2'])/sum_xm
+        
+#         alts_p['RW'] = math.exp(params.d2d.m*alts_u['RW'])/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w))
+        
+#         alts_p['P1'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w)))*p1_pm
+#         alts_p['P2'] = (math.exp(params.d2d.m*w)/(math.exp(params.d2d.m*alts_u['RW'])+math.exp(params.d2d.m*w)))*p2_pm
+    
+#     else:
+#         print('ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR')
