@@ -161,7 +161,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         #     sim.platforms.fare[1] = 2 #euro/km     
         
         # 4- Marketing adjustment ------------------------------------------
-        if 0<=day<100:
+        if 50<=day<100:
             sim.platforms.daily_marketing[1] = True
             sim.platforms.daily_marketing[2] = True
         else:
