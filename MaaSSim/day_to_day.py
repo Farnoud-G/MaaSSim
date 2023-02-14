@@ -316,7 +316,8 @@ def d2d_kpi_pax(*args,**kwargs):
     # ==================================================================================================================#
     # Rafal & Farnoud (2022)
     
-    ret['plat_revenue'] = float('nan')
+    ret['plat_revenue'] = float('nan')  # Platform revenue reduced by discount
+    ret['plat_revenue_wod'] = float('nan') # Platform revenue without discount
     ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].pax_exp.INFORMED
     #-------------------------------------------------------
     """ Utility gained through experience"""
@@ -370,7 +371,7 @@ def d2d_kpi_pax(*args,**kwargs):
     # ================================================================================================= #
 
     ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
-               'MARKETING_U','WOM_U','INFORMED', 'plat_revenue','MATCHING_T'] + [_.name for _ in travellerEvent]]
+               'MARKETING_U','WOM_U','INFORMED', 'plat_revenue', 'plat_revenue_wod','MATCHING_T'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])
@@ -398,6 +399,7 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
     rh_U = -(1+hate)*(disc_rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
     
     ret.at[row.name, 'plat_revenue'] = rh_fare*(sim.platforms.loc[1].comm_rate-disc) if ret.mu[row.name]==1 else 0
+    ret.at[row.name, 'plat_revenue_wod'] = rh_fare*(sim.platforms.loc[1].comm_rate) if ret.mu[row.name]==1 else 0
 
     return rh_U
 

@@ -15,7 +15,7 @@ import logging
 import re
 import datetime
 
-from dqn import DQNAgent
+from MaaSSim.dqn import DQNAgent
 
 
 def single_pararun(one_slice, *args):
@@ -215,7 +215,7 @@ def simulate_baseline(config="data/config.json", inData=None, params=None, **kwa
     state_size=2
 
     revs=[]
-
+    
     for day in range(params.get('nD', 1)):  # run iterations
         print('Day = ', day)
 
@@ -248,7 +248,7 @@ def simulate_baseline(config="data/config.json", inData=None, params=None, **kwa
 
         # 4- Marketing adjustment ------------------------------------------
         sim.platforms.daily_marketing[1] = True if len(sim.res) in range(0, 100) else False
-
+        
         # ====================================================================
 
         sim.make_and_run(run_id=day)  # prepare and SIM
@@ -389,6 +389,9 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
 
         # 4- Marketing adjustment ------------------------------------------
         sim.platforms.daily_marketing[1] = True if len(sim.res) in range(0, 100) else False
+        if sim.platforms.daily_marketing[1] == True:
+            # the cost is fixed for all days with daily_marketing = True
+            marketing_cost = params.d2d.diffusion_speed*(params.nP+params.nV)*5
 
         # ====================================================================
 
@@ -401,14 +404,15 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
         next_state = np.asarray([nP, nV])
         next_state = np.reshape(next_state, [1, state_size])
 
-        reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing cost
+        reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
+        # reward = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
         reward=np.round(reward,2)
         revs.append(reward)
 
         agent.memorize(state, action, reward, next_state, done)
 
         print('day: ',day,' nP: ',state[0][0],'  nV: ', state[0][1],' Action: ', action,' Commrate: ', sim.platforms.comm_rate[1],' fare: ', sim.platforms.fare.iloc[0],
-           ' discount: ', params.platforms.discount,' daily_marketing: ', sim.platforms.daily_marketing[1], ' reward: ',reward,' new nV: ', next_state[0][0], ' new nP: ',next_state[0][1])
+           ' discount: ', params.platforms.discount,' daily_marketing: ', sim.platforms.daily_marketing[1], ' reward: ',reward,' new nP: ', next_state[0][0], ' new nV: ',next_state[0][1])
 
         f = open(kwargs['file_res'], 'a')
         f.write(str(day)+','+str(state[0][0]) + ',' + str(state[0][1]) + ',' + str(action) + ',' + str(sim.platforms.comm_rate[
