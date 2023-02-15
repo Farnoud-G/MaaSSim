@@ -133,11 +133,11 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         # sim.platforms.fare = params.platforms.fare
         
         # 2- Commission rate adjustment -------------------------------------
-        if day==300:
-            # sim.platforms.fare[1] = 2 #euro/km
-            sim.platforms.comm_rate[1] = 0.50
-            sim.platforms.comm_rate[2] = 0.50
-            print('Tragedy STARTS!')
+        # if day==300:
+        #     # sim.platforms.fare[1] = 2 #euro/km
+        #     sim.platforms.comm_rate[1] = 0.50
+        #     sim.platforms.comm_rate[2] = 0.50
+        #     print('Tragedy STARTS!')
             
         # if 150<=day<250:
         #     sim.platforms.comm_rate[1] = 0.20
@@ -149,7 +149,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         #     sim.platforms.comm_rate[1] = 0.0
 
         # 3- Discount adjustment -------------------------------------------
-        if 25<=day<200:
+        if 0<=day<100:
             sim.platforms.discount[1] = 0.40
             sim.platforms.discount[2] = 0.40
         else:
@@ -161,7 +161,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         #     sim.platforms.fare[1] = 2 #euro/km     
         
         # 4- Marketing adjustment ------------------------------------------
-        if 50<=day<100:
+        if 0<=day<100:
             sim.platforms.daily_marketing[1] = True
             sim.platforms.daily_marketing[2] = True
         else:
