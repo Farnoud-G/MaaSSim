@@ -142,6 +142,7 @@ def generate_platforms(_inData, _params, nPM): #f#
     plats['base_fare'] = _params.platforms.base_fare
     plats['min_fare'] = _params.platforms.min_fare
     plats['comm_rate'] = _params.platforms.comm_rate
+    plats['daily_marketing'] = _params.platforms.daily_marketing
     return plats    
 
 
@@ -190,7 +191,8 @@ def generate_demand(_inData, _params=None, avg_speed=False):
     
     df = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
     df.status = travellerEvent.STARTS_DAY
-    df.pos = _inData.nodes.sample(_params.nP).index  # df.pos = df.apply(lambda x: rand_node(_inData.nodes), axis=1)
+    df.pos = _inData.nodes.sample(_params.nP, replace=True).index  # df.pos = df.apply(lambda x: rand_node(_inData.nodes), axis=1)
+    
     if _params.d2d.heterogeneous: #f#
         df['exp_utility_eps'] = np.random.gumbel(0, _params.d2d.exp_utility_eps, _params.nP)  #f#
     df['learning'] = 'on' #f#
@@ -264,6 +266,7 @@ def PT_utility(requests,params): #f#
                                            wait_factor * requests.waitingTime +
                                            transfer_penalty * requests.transfers + requests.transitTime))
     return requests
+
 
 def read_requests_csv(_inData,_params, path): #f#
     print('This simulation uses albatros data')

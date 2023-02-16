@@ -208,7 +208,7 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].veh_exp.MARKETING_U
     
-    if len(sim.res) in range(0, 100):
+    if platforms.daily_marketing[1]:
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nV))
         retx['MARKETING_U'] = retx.apply(lambda row: min((1-1e-2),
              max(1/(1+math.exp(ln((1/row.pre_MARKETING_U)-1)+params.d2d.learning_d*(row.pre_MARKETING_U-1))), 1e-2)), axis=1)
@@ -271,6 +271,7 @@ def d2d_kpi_pax(*args,**kwargs):
     params = sim.params
     run_id = kwargs.get('run_id', None)
     simrun = sim.runs[run_id]
+    platforms = sim.platforms
     paxindex = sim.inData.passengers.index
     df = simrun['trips'].copy()  # results of previous simulation
     unfulfilled_requests = list(df[df['event']=='LOSES_PATIENCE'].pax)
@@ -333,7 +334,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['pre_MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     ret['MARKETING_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.MARKETING_U
     
-    if len(sim.res) in range(0, 100):
+    if platforms.daily_marketing[1]:
         retx = ret.sample(int(params.d2d.diffusion_speed*params.nP))
         retx['MARKETING_U'] = retx.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(ln((1/row.pre_MARKETING_U)-1)+params.d2d.learning_d*(row.pre_MARKETING_U-1))), 1e-2)), axis=1)
         retx['INFORMED'] = True
@@ -382,7 +383,7 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
     params = sim.params
     req = sim.pax[row.name].request
     plat = sim.platforms.loc[1]
-    disc = 0
+    disc = 0 # params.platforms.discount
     
     if sim.pax[row.name].pax.rh_U < 0.5:
         disc = params.platforms.discount #####
