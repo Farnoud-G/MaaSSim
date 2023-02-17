@@ -490,7 +490,8 @@ def simulate_rldqn_case1(config="data/config.json", inData=None, params=None, **
     f.write('act_size:    ' + str(action_size) + '\n')
     f.write('====================================================================\n')
     f.write('====================================================================\n')
-    f.write(','.join(['day','nP','nV','Action','Commrate','fare','discount','daily_marketing','reward','new_nV','new_nP']) + '\n')
+    col_list=['day','nP','nV','Action','Commrate','fare','discount','daily_marketing','reward','new_nV','new_nP','plat_rev','plat_rev_wod','marketing_cost']
+    f.write(','.join(col_list) + '\n')
     f.close()
 
     print('stp is: ', stp)
@@ -555,20 +556,49 @@ def simulate_rldqn_case1(config="data/config.json", inData=None, params=None, **
         next_state = np.asarray([nP, nV])
         next_state = np.reshape(next_state, [1, state_size])
 
-        reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
+        plat_rev=sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0
+        plat_rev_wod = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0
+
+        reward = plat_rev
         # reward = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
+
         reward=np.round(reward,2)
         revs.append(reward)
 
         agent.memorize(state, action, reward, next_state, done)
 
-        print('day: ',day,' nP: ',state[0][0],'  nV: ', state[0][1],' Action: ', action,' Commrate: ', sim.platforms.comm_rate[1],' fare: ', sim.platforms.fare.iloc[0],
-           ' discount: ', params.platforms.discount,' daily_marketing: ', sim.platforms.daily_marketing[1], ' reward: ',reward,' new nP: ', next_state[0][0], ' new nV: ',next_state[0][1])
+        print('day: ',day,
+              'nP: ',state[0][0],
+              'nV: ', state[0][1],
+              'Action: ', action,
+              'Commrate: ', sim.platforms.comm_rate[1],
+              'fare: ', sim.platforms.fare.iloc[0],
+              'discount: ', params.platforms.discount,
+              'daily_marketing: ', sim.platforms.daily_marketing[1],
+              'reward: ',reward,
+              'new nP: ', next_state[0][0],
+              'new nV: ',next_state[0][1],
+              'plat_rev:',plat_rev,
+              'plat_rev_wod:',plat_rev_wod,
+              'marketing_cost:',marketing_cost
+              )
 
         f = open(kwargs['file_res'], 'a')
-        f.write(str(day)+','+str(state[0][0]) + ',' + str(state[0][1]) + ',' + str(action) + ',' + str(sim.platforms.comm_rate[
-            1]) + ',' + str(sim.platforms.fare.iloc[0]) + ',' + str(params.platforms.discount) + ',' + str(sim.platforms.daily_marketing[
-                    1]) + ',' + str(reward) + ',' + str(next_state[0][0]) + ',' + str(next_state[0][1]) + '\n')
+        f.write(
+            str(day)+','+str(state[0][0]) + ',' +
+            str(state[0][1]) + ',' +
+            str(action) + ',' +
+            str(sim.platforms.comm_rate[1]) + ',' +
+            str(sim.platforms.fare.iloc[0]) + ',' +
+            str(params.platforms.discount) + ',' +
+            str(sim.platforms.daily_marketing[1]) + ',' +
+            str(reward) + ',' +
+            str(next_state[0][0]) + ',' +
+            str(next_state[0][1]) + ','+
+            str(plat_rev) + ','+
+            str(plat_rev_wod) + ',' +
+            str(marketing_cost)
+            + '\n')
         f.close()
 
         if sim.functions.f_stop_crit(sim=sim):
@@ -625,9 +655,9 @@ def simulate_baseline_case1(config="data/config.json", inData=None, params=None,
     f.write('Baseline: ' + '\n')
     f.write('====================================================================\n')
     f.write('====================================================================\n')
-    f.write(','.join(
-        ['day', 'nP', 'nV', 'Commrate', 'fare', 'discount', 'daily_marketing', 'reward', 'new_nV',
-         'new_nP']) + '\n')
+    col_list = ['day', 'nP', 'nV', 'Action', 'Commrate', 'fare', 'discount', 'daily_marketing', 'reward', 'new_nV',
+                'new_nP', 'plat_rev', 'plat_rev_wod', 'marketing_cost']
+    f.write(','.join(col_list) + '\n')
     f.close()
 
     state_size = 2
@@ -682,21 +712,46 @@ def simulate_baseline_case1(config="data/config.json", inData=None, params=None,
         next_state = np.asarray([nP, nV])
         next_state = np.reshape(next_state, [1, state_size])
 
-        reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing cost
+        plat_rev=sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0
+        plat_rev_wod = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0
+
+        reward = plat_rev
+
         reward = np.round(reward, 2)
         revs.append(reward)
 
-        print('day: ', day, ' nP: ', state[0][0], '  nV: ', state[0][1], ' Commrate: ', sim.platforms.comm_rate[1],
-              ' fare: ', sim.platforms.fare.iloc[0],
-              ' discount: ', params.platforms.discount, ' daily_marketing: ', sim.platforms.daily_marketing[1],
-              ' reward: ', reward, ' new nV: ', next_state[0][0], ' new nP: ', next_state[0][1])
+        print('day: ',day,
+              'nP: ',state[0][0],
+              'nV: ', state[0][1],
+              'Action: ', '-',
+              'Commrate: ', sim.platforms.comm_rate[1],
+              'fare: ', sim.platforms.fare.iloc[0],
+              'discount: ', params.platforms.discount,
+              'daily_marketing: ', sim.platforms.daily_marketing[1],
+              'reward: ',reward,
+              'new nP: ', next_state[0][0],
+              'new nV: ',next_state[0][1],
+              'plat_rev:',plat_rev,
+              'plat_rev_wod:',plat_rev_wod,
+              'marketing_cost:',marketing_cost
+              )
 
         f = open(kwargs['file_res'], 'a')
-        f.write(str(day) + ',' + str(state[0][0]) + ',' + str(state[0][1]) + ',' + str(sim.platforms.comm_rate[
-                                                                                           1]) + ',' + str(
-            sim.platforms.fare.iloc[0]) + ',' + str(params.platforms.discount) + ',' + str(
-            sim.platforms.daily_marketing[
-                1]) + ',' + str(reward) + ',' + str(next_state[0][0]) + ',' + str(next_state[0][1]) + '\n')
+        f.write(
+            str(day) + ',' + str(state[0][0]) + ',' +
+            str(state[0][1]) + ',' +
+            str('-') + ',' +
+            str(sim.platforms.comm_rate[1]) + ',' +
+            str(sim.platforms.fare.iloc[0]) + ',' +
+            str(params.platforms.discount) + ',' +
+            str(sim.platforms.daily_marketing[1]) + ',' +
+            str(reward) + ',' +
+            str(next_state[0][0]) + ',' +
+            str(next_state[0][1]) + ',' +
+            str(plat_rev) + ',' +
+            str(plat_rev_wod) + ',' +
+            str(marketing_cost)
+            + '\n')
         f.close()
         if sim.functions.f_stop_crit(sim=sim):
             break
