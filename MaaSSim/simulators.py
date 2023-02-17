@@ -425,7 +425,7 @@ def simulate_rldqn_3act(config="data/config.json", inData=None, params=None, **k
     return sim
 
 
-def simulate_rldqn_case1(config="data/config.json", inData=None, params=None, **kwargs):
+def simulate_rldqn_case1_rev(config="data/config.json", inData=None, params=None, **kwargs):
     """
     main runner and wrapper
     loads or uses json config to prepare the data for simulation, run it and process the results
@@ -713,7 +713,9 @@ def simulate_baseline_case1(config="data/config.json", inData=None, params=None,
         next_state = np.reshape(next_state, [1, state_size])
 
         plat_rev=sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0
+        plat_rev=np.round(plat_rev,2)
         plat_rev_wod = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0
+        plat_rev_wod=np.round(plat_rev_wod,2)
 
         reward = plat_rev
 
@@ -721,19 +723,19 @@ def simulate_baseline_case1(config="data/config.json", inData=None, params=None,
         revs.append(reward)
 
         print('day: ',day,
-              'nP: ',state[0][0],
-              'nV: ', state[0][1],
-              'Action: ', '-',
-              'Commrate: ', sim.platforms.comm_rate[1],
-              'fare: ', sim.platforms.fare.iloc[0],
-              'discount: ', params.platforms.discount,
-              'daily_marketing: ', sim.platforms.daily_marketing[1],
-              'reward: ',reward,
-              'new nP: ', next_state[0][0],
-              'new nV: ',next_state[0][1],
-              'plat_rev:',plat_rev,
-              'plat_rev_wod:',plat_rev_wod,
-              'marketing_cost:',marketing_cost
+              ', nP: ',state[0][0],
+              ', nV: ', state[0][1],
+              ', Action: ', '-',
+              ', Commrate: ', sim.platforms.comm_rate[1],
+              ', fare: ', sim.platforms.fare.iloc[0],
+              ', discount: ', params.platforms.discount,
+              ', daily_marketing: ', sim.platforms.daily_marketing[1],
+              ', reward: ',reward,
+              ', new nP: ', next_state[0][0],
+              ', new nV: ',next_state[0][1],
+              ', plat_rev:',plat_rev,
+              ', plat_rev_wod:',plat_rev_wod,
+              ', marketing_cost:',marketing_cost
               )
 
         f = open(kwargs['file_res'], 'a')
