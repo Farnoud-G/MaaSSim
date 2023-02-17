@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+data/graphs/Amsterdam_requests.csv
+data/graphs/Amsterdam.csv
+data/graphs/Amsterdam.graphml
