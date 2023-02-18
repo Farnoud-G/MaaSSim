@@ -1010,7 +1010,7 @@ def simulate_rldqn_case2_rev(config="data/config.json", inData=None, params=None
     f.write('act_size:    ' + str(action_size) + '\n')
     f.write('====================================================================\n')
     f.write('====================================================================\n')
-    col_list=['day','nP','nV','Action','Commrate','fare','discount','daily_marketing','reward','new_nV','new_nP','plat_rev','plat_rev_wod','marketing_cost']
+    col_list=['day','nP','nV','Action','Commrate','fare','discount','daily_marketing','reward','new_nV','new_nP','plat_rev','plat_rev_wod','marketing_cost','w_rew','w_mark','rew_normal','mark_normal']
     f.write(','.join(col_list) + '\n')
     f.close()
 
@@ -1018,6 +1018,8 @@ def simulate_rldqn_case2_rev(config="data/config.json", inData=None, params=None
     print('type(stp): ', type(stp))
     print('initial comm rate: ', sim.platforms.comm_rate[1])
     print('type(comm_rate): ', type(sim.platforms.comm_rate[1]))
+    w_rew = kwargs.get('w_rew', 0.8)
+    w_mark = kwargs.get('w_mark', 0.2)
 
     revs = []
 
@@ -1081,7 +1083,10 @@ def simulate_rldqn_case2_rev(config="data/config.json", inData=None, params=None
         plat_rev_wod = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0
         plat_rev_wod=np.round(plat_rev_wod,2)
 
-        reward=0.8*(plat_rev/(500*params.nP/1000)) + 0.2*((nP+nV)/(65*params.nP/1000))
+        rew_normal=(plat_rev/(500*params.nP/1000))
+        mark_normal=((nP+nV)/(65*params.nP/1000))
+
+        reward=w_rew*rew_normal + w_mark*mark_normal
         # reward = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
 
         reward=np.round(reward,2)
@@ -1102,7 +1107,11 @@ def simulate_rldqn_case2_rev(config="data/config.json", inData=None, params=None
               ', new nV: ',next_state[0][1],
               ', plat_rev:',plat_rev,
               ', plat_rev_wod:',plat_rev_wod,
-              ', marketing_cost:',marketing_cost
+              ', marketing_cost:',marketing_cost,
+              ', w_rew:',w_rew,
+              ', w_mark:', w_mark,
+              ', rew_normal:',rew_normal,
+              ', mark_normal:', mark_normal
               )
 
         f = open(kwargs['file_res'], 'a')
@@ -1119,14 +1128,17 @@ def simulate_rldqn_case2_rev(config="data/config.json", inData=None, params=None
             str(next_state[0][1]) + ','+
             str(plat_rev) + ','+
             str(plat_rev_wod) + ',' +
-            str(marketing_cost)
+            str(marketing_cost),
+            str(w_rew),
+            str(w_mark),
+            str(rew_normal),
+            str(mark_normal),
             + '\n')
         f.close()
 
         if sim.functions.f_stop_crit(sim=sim):
             break
     return sim
-
 
 
 if __name__ == "__main__":
