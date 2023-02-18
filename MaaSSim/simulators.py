@@ -945,7 +945,7 @@ def simulate_rldqn_case1_rev_wod(config="data/config.json", inData=None, params=
     return sim
 
 
-def simulate_rldqn_case2_rev_wod(config="data/config.json", inData=None, params=None, **kwargs):
+def simulate_rldqn_case2_rev(config="data/config.json", inData=None, params=None, **kwargs):
     """
     main runner and wrapper
     loads or uses json config to prepare the data for simulation, run it and process the results
@@ -1081,7 +1081,7 @@ def simulate_rldqn_case2_rev_wod(config="data/config.json", inData=None, params=
         plat_rev_wod = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0
         plat_rev_wod=np.round(plat_rev_wod,2)
 
-        reward = plat_rev_wod
+        reward=0.8*(plat_rev/(500*params.nP/1000)) + 0.2*((nP+nV)/(65*params.nP/1000))
         # reward = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
 
         reward=np.round(reward,2)
