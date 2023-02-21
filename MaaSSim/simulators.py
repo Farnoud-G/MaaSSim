@@ -1085,6 +1085,7 @@ def simulate_rldqn_case2_rev(config="data/config.json", inData=None, params=None
 
         rew_normal=(plat_rev/(500*params.nP/1000))
         mark_normal=((nP+nV)/(65*params.nP/1000))
+        #
 
         reward=w_rew*rew_normal + w_mark*mark_normal
         # reward = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
