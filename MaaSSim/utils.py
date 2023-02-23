@@ -163,7 +163,14 @@ def generate_vehicles(_inData, _params, nV):
     vehs.platform = 1 #f#
     vehs.shift_start = 0
     vehs.shift_end = 60 * 60 * 24
-    vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
+    
+    distances = _inData.skim[_inData.stats['center']].to_frame().dropna()  #f#
+    distances.columns = ['distance'] #f#
+    distances = distances[distances['distance'] < _params.dist_threshold] #f#
+    distances['weight'] =distances['distance'].apply(lambda x:math.exp(_params.demand_structure.origins_dispertion * x)) #f#
+    vehs.pos = list(distances.sample(_params.nV, random_state= _params.seed, weights='weight', replace=True).index) #f#
+    # vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
+    
     vehs['P1_U'] = _params.d2d.ini_att #f#
     vehs['P2_U'] = _params.d2d.ini_att
     
@@ -272,7 +279,7 @@ def read_requests_csv(_inData,_params, path): #f#
     
     df = pd.read_csv(path)
     df = df[df.dist>_params.dist_threshold_min]
-    df = df.sample(_params.nP, random_state=2, replace= True)
+    df = df.sample(_params.nP, random_state=_params.seed, replace= True)
     
     df = PT_utility(df,_params)
     df.reset_index(inplace=True)
