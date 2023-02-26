@@ -122,9 +122,13 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
     for day in range(params.get('nD', 1)):  # run iterations
         if day>0:
             df = sim.res[day-1].pax_exp
+            fd = sim.res[day-1].veh_exp
             np1 = len(df[df.platform_id==1])
             np2 = len(df[df.platform_id==2])
+            vp1 = len(fd[fd.platform_id==1])
+            vp2 = len(fd[fd.platform_id==2])
             print('np1 = ', np1, '  np2 = ', np2)
+            print('vp1 = ', vp1, '  vp2 = ', vp2)
         print('Day = ', day)
 
         #Strategy============================================================        
@@ -152,20 +156,35 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         if 0<=day<100:
             sim.platforms.discount[1] = 0.40
             # sim.platforms.discount[2] = 0.40
+            # sim.platforms.comm_rate[1] = 0.40
         else:
             sim.platforms.discount[1] = 0
             # sim.platforms.discount[2] = 0
+            # sim.platforms.comm_rate[1] = 0
             
-        if 50<=day<150:
+        if 25<=day<125:
             # sim.platforms.discount[1] = 0.40
             sim.platforms.discount[2] = 0.40
+            # sim.platforms.comm_rate[2] = -0.40
         else:
             # sim.platforms.discount[1] = 0
             sim.platforms.discount[2] = 0
+            # sim.platforms.comm_rate[2] = 0
             
-        # if day==100:
-        #     sim.platforms.comm_rate[1] = 0.15
-        #     sim.platforms.fare[1] = 2 #euro/km     
+    
+        # if day>=200:
+        #     if 200<=day<400:
+        #         sim.platforms.discount[1] = 0.30
+        #         sim.platforms.discount[2] = 0
+        #         sim.platforms.comm_rate[1] = 0.30
+        #         sim.platforms.comm_rate[2] = 0
+        #     else:
+        #         sim.platforms.discount[1] = 0
+        #         sim.platforms.discount[2] = 0
+        #         sim.platforms.comm_rate[1] = 0
+        #         sim.platforms.comm_rate[2] = 0
+            
+        
         
         # 4- Marketing adjustment ------------------------------------------
         if 0<=day<100:
@@ -175,7 +194,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
             sim.platforms.daily_marketing[1] = False
             # sim.platforms.daily_marketing[2] = False
         
-        if 50<=day<150:
+        if 25<=day<125:
             sim.platforms.daily_marketing[2] = True
         else:
             sim.platforms.daily_marketing[2] = False
