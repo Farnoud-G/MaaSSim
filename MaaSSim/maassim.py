@@ -92,13 +92,7 @@ class Simulator:
         self.driver_p = []         
         self.traveller_p = [] 
         self.daily_marketing = False
-        
-        # self.income = DotMap() #f#
-        # self.income.expected = pd.DataFrame({'veh_id': list(range(1,self.params.nV+1))}).set_index('veh_id') #f#
-        # self.inData.vehicles.expected_income = self.params.d2d.ini_exp_income #f#
-        # self.income.expected['run {}'.format(0)] = self.inData.vehicles.expected_income.copy() #f#
-        # #slef.inData.vehicles.expected_income = np.random.normal(self.params.d2d.ini_exp_income, 1, self.params.nV) #f#
-        # self.income.actual = pd.DataFrame({'veh_id': list(range(1,self.params.nV+1))}).set_index('veh_id') #f#
+        self.RL = pd.DataFrame(columns=['state', 'action', 'reward', 'next_state', 'fare', 'comm_rate', 'discount', 'Marketing'])
 
     ##########
     #  PREP  #
