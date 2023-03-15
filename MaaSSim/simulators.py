@@ -346,9 +346,9 @@ def simulate_RLn(config="data/config.json", inData=None, params=None, **kwargs):
         # Calculating new state
         max_revenue = 2640 # Euro per day
         revenue = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0 
-        reward = (0.5*revenue/2640)+(0.25*sim.res[day].pax_exp.OUT.value_counts().get(False, 0)/params.nP)+(0.25*sim.res[day].veh_exp.OUT.value_counts().get(False, 0)/params.nV)
+        # reward = ((1/3)*revenue/2640)+((1/3)*sim.res[day].pax_exp.OUT.value_counts().get(False, 0)/params.nP)+((1/3)*sim.res[day].veh_exp.OUT.value_counts().get(False, 0)/params.nV)
+        reward = revenue
         # reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
-        # reward = sim.res[day].pax_kpi.plat_revenue_wod['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
         # reward=np.round(reward,2)
 
         nP = 0 if day == 0 else sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
