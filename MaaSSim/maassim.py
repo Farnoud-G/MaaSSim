@@ -92,7 +92,7 @@ class Simulator:
         self.driver_p = []         
         self.traveller_p = [] 
         self.daily_marketing = False
-        self.RL = pd.DataFrame(columns=['state', 'action', 'reward', 'next_state', 'fare', 'comm_rate', 'discount', 'Marketing'])
+        self.RL = pd.DataFrame(columns=['state', 'action', 'revenue','reward', 'next_state','nP','nV', 'fare', 'comm_rate', 'discount', 'Marketing'])
 
     ##########
     #  PREP  #
