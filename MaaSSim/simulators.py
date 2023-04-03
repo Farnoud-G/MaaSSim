@@ -564,7 +564,7 @@ def simulate_RLn_with_agent(input_agent=None, config="data/config.json", inData=
 
         agent.memorize(state, action, reward, next_state, done)
 
-        sim.RL.loc[len(sim.RL)] = [state, action, revenue, next_state, sim.platforms.fare[1],
+        sim.RL.loc[len(sim.RL)] = [state, action, revenue,reward, next_state,nP,nV, sim.platforms.fare[1],
                                    sim.platforms.comm_rate[1], params.platforms.discount,
                                    sim.platforms.daily_marketing[1]]
 
