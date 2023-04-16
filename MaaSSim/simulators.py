@@ -389,6 +389,8 @@ def simulate_RLn(input_agent=None,config="data/config.json", inData=None, params
     
     state_size = 2;      
     action_size = 3
+    if input_agent is not None:
+        print('RL: No learning')
     agent = DQNAgent(state_size, action_size) if input_agent is None else input_agent
     done = False
     batch_size = 32
@@ -438,25 +440,27 @@ def simulate_RLn(input_agent=None,config="data/config.json", inData=None, params
         # Calculating new state
         max_revenue = 2640 # Euro per day
         revenue = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0
-        # reward = ((1/3)*revenue/2640)+((1/3)*sim.res[day].pax_exp.OUT.value_counts().get(False, 0)/params.nP)+((1/3)*sim.res[day].veh_exp.OUT.value_counts().get(False, 0)/params.nV)
-        reward = 1000*((0.15) * revenue / 2640) + 1000*(0.85)*(  (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) +  (sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
         # reward = revenue
+        reward = (1/2)*sim.res[day].pax_exp.OUT.value_counts().get(False, 0)/params.nP+(1/2)*sim.res[day].veh_exp.OUT.value_counts().get(False, 0)/params.nV
+        # reward = ((1/3)*revenue/max_revenue)+((1/3)*sim.res[day].pax_exp.OUT.value_counts().get(False, 0)/params.nP)+((1/3)*sim.res[day].veh_exp.OUT.value_counts().get(False, 0)/params.nV)
+        # reward = 1000*((0.15) * revenue / 2640) + 1000*(0.85)*(  (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) +  (sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
+       
         # reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
         # reward=np.round(reward,2)
 
         nP = 0 if day == 0 else sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
         nV = 0 if day == 0 else sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
-        print('nP = ', nP, '   nV = ',nV)
-        print('revenue = ', ((0.15) * revenue / 2640), '   npnv = ', (0.85)*(  (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) +  (sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV)))
-        print('reward:', reward)
-        print('mean reward so far:',sim.RL['reward'].mean())
+        print('nP = ', nP, '   nV = ',nV, '    reward=', reward)
+        # print('mean reward so far:',sim.RL['reward'].mean())
         next_state = np.asarray([nP, nV])
         next_state = np.reshape(next_state, [1, state_size])
 
         agent.memorize(state, action, reward, next_state, done)
         
-        sim.RL.loc[len(sim.RL)] = [state, action, revenue, next_state, sim.platforms.fare[1], sim.platforms.comm_rate[1],  params.platforms.discount, sim.platforms.daily_marketing[1]]
-
+        sim.RL.loc[len(sim.RL)] = [state, action, revenue,reward, next_state,nP,nV, sim.platforms.fare[1],
+                                   sim.platforms.comm_rate[1], params.platforms.discount,
+                                   sim.platforms.daily_marketing[1]]
+        
         if sim.functions.f_stop_crit(sim=sim):
             break
     return sim,agent
