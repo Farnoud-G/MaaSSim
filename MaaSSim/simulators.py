@@ -507,6 +507,8 @@ def simulate_RLn_with_agent(input_agent=None, config="data/config.json", inData=
     print('fare = ', sim.platforms.fare[1], '  comm_rate = ', sim.platforms.comm_rate[1], '  disc = ',
           params.platforms.discount, '  marketing = 0-100')
     print('-------------------------------------')
+    print('---------------1585------------------')
+    print('-------------------------------------')
 
     for day in range(params.get('nD', 1)):  # run iterations
         print('Day = ', day)
@@ -563,6 +565,8 @@ def simulate_RLn_with_agent(input_agent=None, config="data/config.json", inData=
                         sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV)))
         print('reward:', reward)
         print('mean reward so far:', sim.RL['reward'].mean())
+        print('mean revenue so far:', sim.RL['revenue'].mean())
+
         next_state = np.asarray([nP, nV])
         next_state = np.reshape(next_state, [1, state_size])
 
