@@ -6,25 +6,6 @@ import math
 from numpy import log as ln
 import random
 from statsmodels.tsa.stattools import adfuller
-
-
-def driver_opt_out(veh, **kwargs): # user defined function to represent agent participation choice
-    """
-    This function depends on stochasticity and heterogeneity of model
-    """
-    sim = veh.sim
-    params = sim.params
-    expected_income = params.d2d.ini_exp_income if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.EXPECTED_INC.loc[veh.id]
-    
-    working_U = params.d2d.get('B_income',1)*(expected_income + veh.veh.get('exp_income_eps', 0))
-    not_working_U = params.d2d.get('B_income',1)*(params.d2d.res_wage + veh.veh.get('res_wage_eps', 0))
-    
-    if params.d2d.probabilistic:
-        working_P = (math.exp(working_U))/(math.exp(working_U) + math.exp(not_working_U))
-        sim.driver_p.append(working_P)
-        return bool(working_P < random.uniform(0,1))
-    else:
-        return bool(working_U < not_working_U)
     
     
 def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent participation choice
@@ -37,31 +18,9 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     if informed==False:
         return True
     
-    # self-supply -------------------------------------------
-    # if len(sim.res) < 201:
-    #     if veh.id<201:
-    #         return False
-    #     else:
-    #         return True
-    # ------------------------------------------------------
+    veh.veh.working_U = sim.res[len(sim.res)-1].veh_exp.working_U.loc[veh.id]
+    return sim.res[len(sim.res)-1].veh_exp.OUT_TOMORROW.loc[veh.id]
     
-    EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.EXPERIENCE_U.loc[veh.id]
-    MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.MARKETING_U.loc[veh.id]
-    WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.WOM_U.loc[veh.id]
-    
-    working_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
-    not_working_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
-    
-    # print('veh id ', veh.id,'U= ',  working_U)
-    veh.veh.working_U = working_U
-    
-    if params.d2d.probabilistic:
-        working_P = (math.exp(params.d2d.m*working_U))/(math.exp(params.d2d.m*working_U) + math.exp(params.d2d.m*not_working_U))
-        # print('working_p= ',working_P)
-        sim.driver_p.append(working_P)
-        return bool(working_P < random.uniform(0,1))
-    else:
-        return bool(working_U < not_working_U)
     
 def S_traveller_opt_out(pax, **kwargs):
     
@@ -71,56 +30,9 @@ def S_traveller_opt_out(pax, **kwargs):
     if informed==False:
         return True
     
-    EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPERIENCE_U.loc[pax.id]    
-    MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.MARKETING_U.loc[pax.id]
-    WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.WOM_U.loc[pax.id]
-    
-    rh_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
-    alt_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
-    
-    pax.pax.rh_U = rh_U
-    if params.d2d.probabilistic:
-        rh_P = (math.exp(params.d2d.m*rh_U))/(math.exp(params.d2d.m*rh_U)+math.exp(params.d2d.m*alt_U))
-        # sim.traveller_p.append(rh_P)
-        return bool(rh_P < random.uniform(0,1))
-    else:
-        return bool(rh_U < alt_U)
+    pax.pax.rh_U = sim.res[len(sim.res)-1].pax_exp.rh_Ux.loc[pax.id] 
+    return sim.res[len(sim.res)-1].pax_exp.OUT_TOMORROW.loc[pax.id]
 
-
-    
-def traveller_opt_out(pax, **kwargs):
-    
-    sim = pax.sim
-    params = sim.params
-    exp_wait_t = params.d2d.ini_exp_wt if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.EXPECTED_WT.loc[pax.id]
-    
-    req = pax.request
-    plat = sim.platforms.loc[1]
-    rh_fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
-    ASC = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.COMMISSION.sum()/10000
-    
-    rh_U = -params.d2d.get('B_fare',1)*rh_fare -params.d2d.get('B_inveh_time',1)*req.ttrav.total_seconds()/3600-params.d2d.get('B_exp_time',1)*exp_wait_t/60 + ASC + pax.pax.get('exp_utility_eps', 0)
-    
-    alt_U = -params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000 -params.d2d.get('B_inveh_time',1)*(req.dist/params.PT_speed)/3600
-    
-    S = 8
-    rh_U = rh_U*S
-    alt_U = alt_U*S
-    
-    # print('rh_U= ',rh_U,'alt_U= ',alt_U)
-    
-    #=================================================================
-#     print('rh_U= ',rh_U,' fare= ', -params.d2d.get('B_fare',1)*rh_fare,' time= ',-params.d2d.get('B_inveh_time',1)*req.ttrav.total_seconds()/3600-params.d2d.get('B_exp_time',1)*exp_wait_t/60)
-    
-#     print('alt_U= ',alt_U,' fare= ',-params.d2d.get('B_fare',1)*params.PT_fare*req.dist/1000, 'time= ', -params.d2d.get('B_inveh_time',1)*(req.dist/params.PT_speed)/3600)
-    #=================================================================
-    
-    if params.d2d.probabilistic:
-        rh_P = (math.exp(rh_U))/(math.exp(rh_U)+math.exp(alt_U))
-        sim.traveller_p.append(rh_P)
-        return bool(rh_P < random.uniform(0,1))
-    else:
-        return bool(rh_U < alt_U)
 
     
 def d2d_kpi_veh(*args,**kwargs):
@@ -242,10 +154,23 @@ def d2d_kpi_veh(*args,**kwargs):
             ret['INFORMED'].loc[v2] = True
     
     #===================================================================
+
+    not_working_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    
+    # working_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
+    # working_P = (math.exp(params.d2d.m*working_U))/(math.exp(params.d2d.m*working_U) + math.exp(params.d2d.m*not_working_U))
+    # return bool(working_P < random.uniform(0,1))
+    
+    ret['working_U'] = ret.apply(lambda row: params.d2d.B_Experience*row.EXPERIENCE_U + params.d2d.B_Marketing*row.MARKETING_U + params.d2d.B_WOM*row.WOM_U, axis=1)
+    ret['working_P'] = ret.apply(lambda row: (math.exp(params.d2d.m*row.working_U))/(math.exp(params.d2d.m*row.working_U) + math.exp(params.d2d.m*not_working_U)), axis=1)
+    
+    ret['OUT_TOMORROW'] = ret.apply(lambda row: True if row.INFORMED==False else bool(row.working_P < random.uniform(0,1)), axis=1)
+    
+    #===================================================================
     
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'IDLE_TIME', 'PICKUP_DIST', 'DRIVING_DIST',
                'REVENUE','COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu','INFORMED','EXPERIENCE_U',
-               'MARKETING_U','WOM_U'] + [_.name for _ in driverEvent]]
+               'MARKETING_U','WOM_U', 'working_U', 'working_P', 'OUT_TOMORROW'] + [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
     # KPIs
@@ -367,11 +292,23 @@ def d2d_kpi_pax(*args,**kwargs):
             ret['INFORMED'].loc[p1] = True
             ret['INFORMED'].loc[p2] = True
     
+    # ================================================================================================= #
+    
+    alt_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    
+    # rh_U = params.d2d.B_Experience*EXPERIENCE_U + params.d2d.B_Marketing*MARKETING_U + params.d2d.B_WOM*WOM_U
+    # rh_P = (math.exp(params.d2d.m*rh_U))/(math.exp(params.d2d.m*rh_U)+math.exp(params.d2d.m*alt_U))
+    # return bool(rh_P < random.uniform(0,1))
+    
+    ret['rh_Ux'] = ret.apply(lambda row: params.d2d.B_Experience*row.EXPERIENCE_U + params.d2d.B_Marketing*row.MARKETING_U + params.d2d.B_WOM*row.WOM_U, axis=1)
+    ret['rh_P'] = ret.apply(lambda row: (math.exp(params.d2d.m*row.rh_Ux))/(math.exp(params.d2d.m*row.rh_Ux)+math.exp(params.d2d.m*alt_U)), axis=1)
+    ret['OUT_TOMORROW'] = ret.apply(lambda row: True if row.INFORMED==False else bool(row.rh_P < random.uniform(0,1)), axis=1)
     
     # ================================================================================================= #
 
     ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
-               'MARKETING_U','WOM_U','INFORMED', 'plat_revenue', 'plat_revenue_wod','MATCHING_T'] + [_.name for _ in travellerEvent]]
+               'MARKETING_U','WOM_U','INFORMED', 'plat_revenue', 'plat_revenue_wod','MATCHING_T', 
+               'rh_Ux', 'rh_P', 'OUT_TOMORROW'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])
