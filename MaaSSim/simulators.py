@@ -563,7 +563,7 @@ def simulate_RLx(input_agent=None,config="data/config.json", inData=None, params
         reward = (1/2)*nP/params.nP+(1/2)*nV/params.nV
         
         # Revenu + Market share==================================================================
-        reward = ((1/3)*revenue/max_revenue)+((1/3)*nV/params.nP)+((1/3)*nV/params.nV)
+        # reward = ((1/3)*revenue/max_revenue)+((1/3)*nV/params.nP)+((1/3)*nV/params.nV)
         
         # reward = 1000*((0.15) * revenue / 2640) + 1000*(0.85)*(  (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) +  (sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
 
