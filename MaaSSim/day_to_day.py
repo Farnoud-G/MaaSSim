@@ -165,6 +165,17 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['working_P'] = ret.apply(lambda row: (math.exp(params.d2d.m*row.working_U))/(math.exp(params.d2d.m*row.working_U) + math.exp(params.d2d.m*not_working_U)), axis=1)
     
     ret['OUT_TOMORROW'] = ret.apply(lambda row: True if row.INFORMED==False else bool(row.working_P < random.uniform(0,1)), axis=1)
+    #===================================================================
+#     ret['NEGATIVE_INCOME'] = False
+#     yesterday = len(sim.res)
+#     for dr in range(1,params.nV+1):
+#         if ret.loc[dr].ACTUAL_INC < 0:
+#             ret.at[dr, 'NEGATIVE_INCOME'] = True
+#             ret.at[dr, 'OUT_TOMORROW'] = True
+        
+#         for i in range(0,9):
+#             if sim.res[yesterday-i].loc[dr].NEGATIVE_INCOME == True:
+#                 ret.at[dr, 'OUT_TOMORROW'] = True
     
     #===================================================================
     
