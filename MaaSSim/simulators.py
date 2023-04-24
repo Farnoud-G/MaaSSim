@@ -240,8 +240,11 @@ def simulate_baselineN(config="data/config.json", inData=None, params=None, **kw
         nP = 0 if day == 0 else sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
         nV = 0 if day == 0 else sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
 
-        sim.RL.loc[len(sim.RL)] = [-1, -1, reward, -1, sim.platforms.fare[1], sim.platforms.comm_rate[1],  params.platforms.discount, sim.platforms.daily_marketing[1]]
+        # sim.RL.loc[len(sim.RL)] = [-1, -1, reward, -1, sim.platforms.fare[1], sim.platforms.comm_rate[1],  params.platforms.discount, sim.platforms.daily_marketing[1]]
 
+        sim.RL.loc[len(sim.RL)] = [[], -1, revenue, reward, [], nP, nV, sim.platforms.fare[1],
+                                   sim.platforms.comm_rate[1], params.platforms.discount,
+                                   sim.platforms.daily_marketing[1]]
 
 
         if sim.functions.f_stop_crit(sim=sim):
@@ -400,6 +403,8 @@ def simulate_RLn(input_agent=None,config="data/config.json", inData=None, params
     print('state_size = ',state_size, '  action_size = ',action_size, '  Lever = Commission', '  step = ',stp)
     print('fare = ', sim.platforms.fare[1], '  comm_rate = ', sim.platforms.comm_rate[1], '  disc = ',params.platforms.discount, '  marketing = 0-100')
     print('-------------------------------------')
+    
+    prev_action=0
 
     for day in range(params.get('nD', 1)):  # run iterations
         print('Day = ', day)
@@ -423,6 +428,8 @@ def simulate_RLn(input_agent=None,config="data/config.json", inData=None, params
         comm_rate = round(comm_rate, 2)
         sim.platforms.comm_rate[1] = comm_rate
         print('comm_rate = ', comm_rate)
+        
+        
 
         # 3- Discount adjustment -------------------------------------------
         # params.platforms.discount = 0.40 if 100<=day<200 else 0
@@ -455,7 +462,8 @@ def simulate_RLn(input_agent=None,config="data/config.json", inData=None, params
         next_state = np.asarray([nP, nV])
         next_state = np.reshape(next_state, [1, state_size])
 
-        agent.memorize(state, action, reward, next_state, done)
+        agent.memorize(state, prev_action, reward, next_state, done)
+        prev_action=action
         
         sim.RL.loc[len(sim.RL)] = [state, action, revenue,reward, next_state,nP,nV, sim.platforms.fare[1],
                                    sim.platforms.comm_rate[1], params.platforms.discount,
@@ -660,7 +668,7 @@ def simulate_RLn_with_agent(input_agent=None, config="data/config.json", inData=
         max_revenue = 2640  # Euro per day
         revenue = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0
         # reward = ((1/3)*revenue/2640)+((1/3)*sim.res[day].pax_exp.OUT.value_counts().get(False, 0)/params.nP)+((1/3)*sim.res[day].veh_exp.OUT.value_counts().get(False, 0)/params.nV)
-        reward = 1000 * ((0.15) * revenue / 2640) + 1000 * (0.85) * (
+        reward = 1000 * ((0.33) * revenue / 2640) + 1000 * (0.66) * (
                     (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) + (
                         sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
         # reward = revenue
@@ -685,6 +693,143 @@ def simulate_RLn_with_agent(input_agent=None, config="data/config.json", inData=
         sim.RL.loc[len(sim.RL)] = [state, action, revenue,reward, next_state,nP,nV, sim.platforms.fare[1],
                                    sim.platforms.comm_rate[1], params.platforms.discount,
                                    sim.platforms.daily_marketing[1]]
+
+        if sim.functions.f_stop_crit(sim=sim):
+            break
+    return sim, agent
+
+
+
+
+def simulate_RLn_new_state(input_agent=None, config="data/config.json", inData=None, params=None, **kwargs):
+    if inData is None:  # otherwise we use what is passed
+        from MaaSSim.data_structures import structures
+        inData = structures.copy()  # fresh data
+    if params is None:
+        params = get_config(config, root_path=kwargs.get('root_path'))  # load from .json file
+    if kwargs.get('make_main_path', False):
+        from MaaSSim.utils import make_config_paths
+        params = make_config_paths(params, main=kwargs.get('make_main_path', False), rel=True)
+    if params.paths.get('vehicles', False):
+        inData = read_vehicle_positions(inData, path=params.paths.vehicles)
+    if len(inData.G) == 0:  # only if no graph in input
+        inData = load_G(inData, params, stats=True)
+    if params.paths.get('requests', False):
+        inData = read_requests_csv(inData, params, path=params.paths.requests)
+    if len(inData.passengers) == 0:  # only if no passengers in input
+        inData = generate_demand(inData, params, avg_speed=True)
+    if len(inData.vehicles) == 0:  # only if no vehicles in input
+        inData.vehicles = generate_vehicles(inData, params, params.nV)
+    if len(inData.platforms) == 0:  # only if no platforms in input
+        inData.platforms = generate_platforms(inData, params, params.get('nPM', 1))
+
+    inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
+
+    sim = Simulator(inData, params=params, **kwargs)  # initialize
+    sim.platforms.fare[1] = 1.2
+    sim.platforms.comm_rate[1] = 0.10
+    params.platforms.discount = 0.0
+
+    state_size = 2;
+    action_size = 3
+    agent = DQNAgent(state_size, action_size) if input_agent is None else input_agent
+    done = False
+    batch_size = 32
+    stp = 0.05
+
+    print('initialization-----------------------')
+    print('state_size = ', state_size, '  action_size = ', action_size, '  Lever = Commission', '  step = ', stp)
+    print('fare = ', sim.platforms.fare[1], '  comm_rate = ', sim.platforms.comm_rate[1], '  disc = ',
+          params.platforms.discount, '  marketing = 0-100')
+    print('-------------------------------------')
+    print('---------------1585------------------')
+    print('-------------------------------------')
+
+    prev_action=0
+
+    nP_y=0
+    nV_y=0
+
+    for day in range(params.get('nD', 1)):  # run iterations
+        print('Day = ', day)
+
+        nP = 0 if day == 0 else sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
+        nV = 0 if day == 0 else sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
+
+        prev_state=np.reshape(np.asarray([nP_y, nV_y]), [1, state_size])
+
+        state = np.reshape(np.asarray([0, 0]), [1, state_size]) if day == 0 else np.reshape(np.asarray([nP, nV]),[1, state_size])
+
+
+
+        agent.memorize(prev_state, prev_action, reward, state, done)
+
+        sim.RL.loc[len(sim.RL)] = [prev_state, prev_action, revenue, reward, state, nP, nV, sim.platforms.fare[1],
+                                   sim.platforms.comm_rate[1], params.platforms.discount,
+                                   sim.platforms.daily_marketing[1]]
+
+        nP_y = nP
+        nV_y = nV
+
+
+
+        # Strategy============================================================
+
+        # 1- Trip fare adjustment -------------------------------------------
+        # sim.platforms.fare = params.platforms.fare
+
+        # 2- Commission rate adjustment -------------------------------------
+        action = agent.act(state)
+        comm_rate = sim.platforms.comm_rate[1]
+        if action == 0:
+            comm_rate = comm_rate + stp if comm_rate + stp < 1 else 1
+        elif action == 1:
+            comm_rate = comm_rate - stp if comm_rate - stp > 0 else 0
+        elif action == 2:
+            comm_rate = comm_rate
+        comm_rate = round(comm_rate, 2)
+        sim.platforms.comm_rate[1] = comm_rate
+        print('comm_rate = ', comm_rate)
+
+        # 3- Discount adjustment -------------------------------------------
+        # params.platforms.discount = 0.40 if 100<=day<200 else 0
+
+        # 4- Marketing adjustment ------------------------------------------
+        sim.platforms.daily_marketing[1] = True if len(sim.res) in range(0, 100) else False
+        if sim.platforms.daily_marketing[1] == True:
+            marketing_cost = params.d2d.diffusion_speed * (params.nP + params.nV) * 5
+
+        # ====================================================================
+
+        sim.make_and_run(run_id=day)  # prepare and SIM
+        sim.output()  # calc results
+
+        # Calculating new state
+        max_revenue = 2640  # Euro per day
+        revenue = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0
+        # reward = ((1/3)*revenue/2640)+((1/3)*sim.res[day].pax_exp.OUT.value_counts().get(False, 0)/params.nP)+((1/3)*sim.res[day].veh_exp.OUT.value_counts().get(False, 0)/params.nV)
+        # reward = 1000 * ((0.33) * revenue / 2640) + 1000 * (0.66) * (
+        #             (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) + (
+        #                 sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
+        reward = revenue
+        # reward = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0  # - marketing_cost
+        # reward=np.round(reward,2)
+
+        nP = 0 if day == 0 else sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
+        nV = 0 if day == 0 else sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
+        print('nP = ', nP, '   nV = ', nV)
+        print('revenue = ', ((0.15) * revenue / 2640), '   npnv = ', (0.85) * (
+                    (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) + (
+                        sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV)))
+        print('reward:', reward)
+        print('mean reward so far:', sim.RL['reward'].mean())
+        print('mean revenue so far:', sim.RL['revenue'].mean())
+
+        next_state = np.asarray([nP, nV])
+        next_state = np.reshape(next_state, [1, state_size])
+
+        prev_action=action
+
 
         if sim.functions.f_stop_crit(sim=sim):
             break
