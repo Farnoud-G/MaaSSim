@@ -676,18 +676,16 @@ def simulate_RLx_combine(input_agent=None, config="data/config.json", inData=Non
         # Revenue only===========================================================================
         # reward = revenue
 
-        # Market share only======================================================================
-        reward = (1 / 2) * nP / params.nP + (1 / 2) * nV / params.nV
-
         # Revenu + Market share==================================================================
-        # reward = ((1/3)*revenue/max_revenue)+((1/3)*nV/params.nP)+((1/3)*nV/params.nV)
-
+        reward = ((1/3)*revenue/max_revenue)+((1/3)*nP/params.nP)+((1/3)*nV/params.nV)
+        reward = reward * 1000
         # reward = 1000*((0.15) * revenue / 2640) + 1000*(0.85)*(  (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) +  (sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
 
         # ========================================================================================
         # reward=np.round(reward,2)
-        print('nP = ', nP, '   nV = ', nV, '    reward=', reward)
-        # print('mean reward so far:',sim.RL['reward'].mean())
+        print('nP = ', nP, '   nV = ', nV, '    reward=', reward,'revenue',revenue,'revenue/max_revenue',revenue/max_revenue,'   nP/params.nP=',nP/params.nP,'   nV/params.nV=',nV/params.nV)
+        print('mean reward so far:',sim.RL['reward'].mean())
+        print('mean revenue so far:', sim.RL['revenue'].mean())
 
         agent.memorize(state, action, reward, next_state, done)
 
