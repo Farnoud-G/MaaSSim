@@ -120,9 +120,6 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
     sim = Simulator(inData, params=params, **kwargs)  # initialize
     
     for day in range(params.get('nD', 1)):  # run iterations
-        nP = sim.res[day-1].pax_exp.OUT.value_counts().get(False, 0) if day>0 else 0
-        nV = sim.res[day-1].veh_exp.OUT.value_counts().get(False, 0) if day>0 else 0
-        print('nP = ', nP, '   nV = ', nV)
         print('Day = ', day)
         
         # platfrom_profit = sim.res[day-1].pax_kpi.plat_revenue['sum'] if len(sim.res)>0 else 0 # - marketing cost 
@@ -164,6 +161,10 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
 
         sim.make_and_run(run_id=day)  # prepare and SIM
         sim.output()  # calc results
+        
+        nP = sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
+        nV = sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
+        print('nP = ', nP, '   nV = ', nV)
 
         if sim.functions.f_stop_crit(sim=sim):
             break
