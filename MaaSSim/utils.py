@@ -143,6 +143,7 @@ def generate_platforms(_inData, _params, nPM): #f#
     plats['min_fare'] = _params.platforms.min_fare
     plats['comm_rate'] = _params.platforms.comm_rate
     plats['daily_marketing'] = _params.platforms.daily_marketing
+    plats['incentive'] = _params.platforms.incentive
     return plats    
 
 

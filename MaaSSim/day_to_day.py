@@ -166,8 +166,8 @@ def d2d_kpi_veh(*args,**kwargs):
         ret['TRIP_FARE'] = d.groupby(['veh']).sum().TRIP_FARE
     else:
         ret['TRIP_FARE'] = 0
-    ret['REVENUE'] = ret['TRIP_FARE']*(1-platforms.loc[1].comm_rate)
-    ret['COMMISSION'] = ret['TRIP_FARE']*(platforms.loc[1].comm_rate)#-params.platforms.discount)
+    ret['REVENUE'] = ret['TRIP_FARE']*(1-platforms.loc[1].comm_rate)*(1+params.platforms.incentive)
+    ret['COMMISSION'] = ret['TRIP_FARE']*(platforms.loc[1].comm_rate)#-params.platforms.discount) incentive
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
     ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
