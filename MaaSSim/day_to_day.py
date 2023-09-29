@@ -166,7 +166,8 @@ def d2d_kpi_veh(*args,**kwargs):
         ret['TRIP_FARE'] = d.groupby(['veh']).sum().TRIP_FARE
     else:
         ret['TRIP_FARE'] = 0
-    ret['REVENUE'] = ret['TRIP_FARE']*(1-platforms.loc[1].comm_rate)*(1+params.platforms.incentive)
+    # ret['REVENUE'] = ret['TRIP_FARE']*(1-platforms.loc[1].comm_rate)*(1+params.platforms.incentive)
+    ret['REVENUE'] = ret.apply(lambda row: rev_func(row, sim, ret), axis=1)
     ret['COMMISSION'] = ret['TRIP_FARE']*(platforms.loc[1].comm_rate)#-params.platforms.discount) incentive
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
@@ -377,6 +378,16 @@ def d2d_kpi_pax(*args,**kwargs):
     kpi['nP'] = ret.shape[0]
     return {'pax_exp': ret, 'pax_kpi': kpi}
 
+def rev_func(row, sim, ret):
+    params = sim.params
+    plat = sim.platforms.loc[1]
+    incen = 0
+    
+    if sim.vehs[row.name].veh.working_U<0.5:
+        incen = params.platforms.incentive
+    
+    revenue = ret.TRIP_FARE[row.name]*(1-plat.comm_rate)*(1+incen)
+    return revenue
 
 def rh_U_func(row, sim, unfulfilled_requests, ret):
 
