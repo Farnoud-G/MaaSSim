@@ -118,7 +118,11 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
     inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
 
     sim = Simulator(inData, params=params, **kwargs)  # initialize
+    np_list=[]
     
+    mss = []
+    old_ms = 0
+
     for day in range(params.get('nD', 1)):  # run iterations
         print('Day = ', day)
         
@@ -165,6 +169,19 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         nP = sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
         nV = sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
         print('nP = ', nP, '   nV = ', nV)
+        
+        #===========================================
+        
+        mss.append(sim.res[day].pax_exp.OUT.value_counts().get(False,0))
+        step = 100
+        if day%step==0 and day!=0:
+            new_mss = mss[day-step:day]
+            ms = sum(new_mss)/len(new_mss)
+            if ms<=old_ms*1.01 and day>500:
+                break
+            old_ms = ms
+            print('=========================Market share is: ', ms)
+        #==================================
 
         if sim.functions.f_stop_crit(sim=sim):
             break
