@@ -122,10 +122,6 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
     sim = Simulator(inData, params=params, **kwargs)  # initialize
 
     for day in range(params.get('nD', 1)):  # run iterations
-        print('Day = ', day)
-        nP = 0 if day == 0 else sim.res[day-1].pax_exp.OUT.value_counts().get(False, 0)
-        nV = 0 if day == 0 else sim.res[day-1].veh_exp.OUT.value_counts().get(False, 0)
-        print('nP = ', nP, '   nV = ',nV)
 
         # Strategy============================================================
 
@@ -152,6 +148,11 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
 
         sim.make_and_run(run_id=day)  # prepare and SIM
         sim.output()  # calc results
+        
+        print('Day = ', day)
+        nP = sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
+        nV = sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
+        print('nP = ', nP, '   nV = ',nV)
 
         if sim.functions.f_stop_crit(sim=sim):
             break
