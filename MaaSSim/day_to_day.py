@@ -6,12 +6,10 @@ import math
 from numpy import log as ln
 import random
 from statsmodels.tsa.stattools import adfuller
-    
+
     
 def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent participation choice
-    """
-    This function depends on stochasticity and heterogeneity of model
-    """
+  
     sim = veh.sim
     params = sim.params    
     informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.INFORMED.loc[veh.id]
