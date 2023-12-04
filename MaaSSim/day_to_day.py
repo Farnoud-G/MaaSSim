@@ -199,7 +199,13 @@ def d2d_kpi_veh(*args,**kwargs):
     """ Utility gained through experience"""
 
     ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
-    ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
+    
+    if params.d2d.heterogeneous:
+        np.random.seed(1)
+        ret['res_wage'] = np.random.normal(params.d2d.res_wage, 10, params.nV)
+        ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['res_wage']-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
+    else:
+        ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
     
     ret['EXPERIENCE_U'] = ret.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.learning_d*params.d2d.adj_s*row.inc_dif)), 1e-2)), axis=1)
     
@@ -246,7 +252,7 @@ def d2d_kpi_veh(*args,**kwargs):
     
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'IDLE_TIME', 'PICKUP_DIST', 'DRIVING_DIST',
                'REVENUE','COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu','INFORMED','EXPERIENCE_U',
-               'MARKETING_U','WOM_U'] + [_.name for _ in driverEvent]]
+               'MARKETING_U','WOM_U', 'res_wage'] + [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
     # KPIs
@@ -371,7 +377,7 @@ def d2d_kpi_pax(*args,**kwargs):
     # ================================================================================================= #
 
     ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
-               'MARKETING_U','WOM_U','INFORMED', 'plat_revenue','MATCHING_T'] + [_.name for _ in travellerEvent]]
+               'MARKETING_U','WOM_U','INFORMED', 'plat_revenue','MATCHING_T', 'VoT'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])
@@ -403,10 +409,16 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
         hate = 1
     else:
         hate = 0
-
+    
     rh_fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
     disc_rh_fare = (1-disc)*rh_fare
-    rh_U = -(1+hate)*(disc_rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
+    
+    if params.d2d.heterogeneous:
+        np.random.seed(1)
+        ret['VoT'] = np.random.normal(params.VoT, 2.5, params.nP)
+        rh_U = -(1+hate)*(disc_rh_fare + (ret.VoT[row.name]/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
+    else:
+        rh_U = -(1+hate)*(disc_rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
     
     ret.at[row.name, 'plat_revenue'] = rh_fare*(sim.platforms.loc[1].comm_rate-disc) if ret.mu[row.name]==1 else 0
 

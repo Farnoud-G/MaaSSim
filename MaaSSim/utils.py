@@ -172,9 +172,9 @@ def generate_vehicles(_inData, _params, nV):
     
     vehs['working_U'] = _params.d2d.ini_att #f#
     vehs['learning'] = 'on' #f#
-    if _params.d2d.heterogeneous: #f#
-        vehs['res_wage_eps'] = np.random.gumbel(0, _params.d2d.res_wage_sp, nV) #f#
-        vehs['exp_income_eps'] = np.random.gumbel(0, _params.d2d.exp_income_sp, nV) #f#
+    # if _params.d2d.heterogeneous: #f#
+        # vehs['res_wage_eps'] = np.random.gumbel(0, _params.d2d.res_wage_sp, nV) #f#
+        # vehs['exp_income_eps'] = np.random.gumbel(0, _params.d2d.exp_income_sp, nV) #f#
         
     return vehs
 
