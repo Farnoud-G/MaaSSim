@@ -103,7 +103,11 @@ def d2d_kpi_veh(*args,**kwargs):
     #====================================================================
     # Rafal & Farnoud (2022)
     
-    ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].veh_exp.INFORMED
+    
+    if params.d2d.notification_via_marketing:
+        ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].veh_exp.INFORMED
+    else:
+        ret['INFORMED'] = True
     #-------------------------------------------------------
     """ Utility gained through experience"""
 
@@ -252,7 +256,10 @@ def d2d_kpi_pax(*args,**kwargs):
     
     ret['plat_revenue'] = float('nan')  # Platform revenue reduced by discount
     ret['plat_revenue_wod'] = float('nan') # Platform revenue without discount
-    ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].pax_exp.INFORMED
+    if params.d2d.notification_via_marketing:
+        ret['INFORMED'] = False if run_id == 0 else sim.res[run_id-1].pax_exp.INFORMED
+    else:
+        ret['INFORMED'] = True
     #-------------------------------------------------------
     """ Utility gained through experience"""
     
