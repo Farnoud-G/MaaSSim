@@ -169,7 +169,7 @@ def generate_vehicles(_inData, _params, nV):
     distances = distances[distances['distance'] < _params.dist_threshold] #f#
     distances['weight'] =distances['distance'].apply(lambda x:math.exp(_params.demand_structure.origins_dispertion * x)) #f#
     vehs.pos = list(distances.sample(_params.nV, random_state= _params.seed, weights='weight', replace=True).index) #f#
-    
+
     vehs['working_U'] = _params.d2d.ini_att #f#
     vehs['learning'] = 'on' #f#
     # if _params.d2d.heterogeneous: #f#
@@ -194,8 +194,8 @@ def generate_demand(_inData, _params=None, avg_speed=False):
     df.status = travellerEvent.STARTS_DAY
     df.pos = _inData.nodes.sample(_params.nP, replace=True).index  # df.pos = df.apply(lambda x: rand_node(_inData.nodes), axis=1)
     
-    if _params.d2d.heterogeneous: #f#
-        df['exp_utility_eps'] = np.random.gumbel(0, _params.d2d.exp_utility_eps, _params.nP)  #f#
+    # if _params.d2d.heterogeneous: #f#
+    #     df['exp_utility_eps'] = np.random.gumbel(0, _params.d2d.exp_utility_eps, _params.nP)  #f#
     df['learning'] = 'on' #f#
     df['rh_U'] = _params.d2d.ini_att #f#
     _inData.passengers = df
