@@ -201,11 +201,14 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['pre_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.EXPERIENCE_U
     
     if params.d2d.heterogeneous:
-        np.random.seed(1)
-        ret['res_wage'] = np.random.normal(params.d2d.res_wage, 10, params.nV)
+        np.random.seed(params.seed)
+        rw = np.random.normal(params.d2d.res_wage, params.d2d.res_wage*params.proportional_std, params.nV)
+        rw[rw<0] = 0
+        ret['res_wage'] = rw
         ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (row['res_wage']-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
     else:
         ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
+        ret['res_wage'] = params.d2d.res_wage
     
     ret['EXPERIENCE_U'] = ret.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(ln((1/row.pre_EXPERIENCE_U)-1)+params.d2d.learning_d*params.d2d.adj_s*row.inc_dif)), 1e-2)), axis=1)
     
@@ -414,11 +417,14 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
     disc_rh_fare = (1-disc)*rh_fare
     
     if params.d2d.heterogeneous:
-        np.random.seed(1)
-        ret['VoT'] = np.random.normal(params.VoT, 2.5, params.nP)
+        np.random.seed(params.seed)
+        vot = np.random.normal(params.VoT, params.VoT*params.proportional_std, params.nP)
+        vot[vot<0] = 0
+        ret['VoT'] = vot
         rh_U = -(1+hate)*(disc_rh_fare + (ret.VoT[row.name]/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
     else:
         rh_U = -(1+hate)*(disc_rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
+        ret['VoT'] = params.VoT
     
     ret.at[row.name, 'plat_revenue'] = rh_fare*(sim.platforms.loc[1].comm_rate-disc) if ret.mu[row.name]==1 else 0
 

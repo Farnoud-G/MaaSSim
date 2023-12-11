@@ -171,16 +171,16 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         print('nP = ', nP, '   nV = ', nV)
         
         #===========================================
-        
-        mss.append(sim.res[day].pax_exp.OUT.value_counts().get(False,0))
-        step = 100
-        if day%step==0 and day!=0:
-            new_mss = mss[day-step:day]
-            ms = sum(new_mss)/len(new_mss)
-            if ms<=old_ms*1.01 and day>500:
-                break
-            old_ms = ms
-            print('=========================Market share is: ', ms)
+        if params.f_stop_crit:
+            mss.append(sim.res[day].pax_exp.OUT.value_counts().get(False,0))
+            step = 100
+            if day%step==0 and day!=0:
+                new_mss = mss[day-step:day]
+                ms = sum(new_mss)/len(new_mss)
+                if ms<=old_ms*1.01 and day>500:
+                    break
+                old_ms = ms
+                print('=========================Market share is: ', ms)
         #==================================
 
         if sim.functions.f_stop_crit(sim=sim):

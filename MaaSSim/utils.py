@@ -262,10 +262,22 @@ def PT_utility(requests,params): #f#
         wait_factor = 2
         transfer_penalty = 500
         requests['PT_fare'] = 1 + requests.transitTime * params.PT_avg_speed/1000 * 0.175
-        requests['u_PT'] = -(requests['PT_fare'] + \
-                           (params.VoT/3600) * (walk_factor * requests.walkDistance / params.speeds.walk +
+        if params.d2d.heterogeneous:
+            np.random.seed(params.seed)
+            vot = np.random.normal(params.VoT, params.VoT*params.proportional_std, params.nP)
+            vot[vot<0] = 0
+            requests['VoT'] = vot
+            requests['u_PT'] = -(requests['PT_fare'] + \
+                           (requests['VoT']/3600) * (walk_factor * requests.walkDistance / params.speeds.walk +
                                            wait_factor * requests.waitingTime +
                                            transfer_penalty * requests.transfers + requests.transitTime))
+        else:
+            requests['u_PT'] = -(requests['PT_fare'] + \
+                               (params.VoT/3600) * (walk_factor * requests.walkDistance / params.speeds.walk +
+                                               wait_factor * requests.waitingTime +
+                                               transfer_penalty * requests.transfers + requests.transitTime))
+            requests['VoT'] = params.VoT
+            
     return requests
 
 
@@ -293,6 +305,7 @@ def read_requests_csv(_inData,_params, path): #f#
     requests.origin = df.origin
     requests.destination = df.destination
     requests['u_PT'] = df['u_PT']
+    requests['VoT'] = df['VoT']
 
     if _params.demand_structure.temporal_distribution == 'uniform':
         treq = np.random.uniform(-_params.simTime * 60 * 60 / 2, _params.simTime * 60 * 60 / 2,
