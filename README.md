@@ -1,3 +1,7 @@
+# Supplementary material for the paper: Modelling the Rise and Fall of Two-sided Markets
+
+
+
 # MaaSSim
 ### agent-based two-sided mobility platform simulator
 
