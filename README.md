@@ -1,9 +1,8 @@
 # Supplementary material for the paper: Modelling the Rise and Fall of Two-sided Markets
+You can access the paper and the reproducible code and results [here](https://github.com/Farnoud-G/MaaSSim/tree/Coevolution/docs/AAMAS-2024)
 
 
-
-# MaaSSim
-### agent-based two-sided mobility platform simulator
+### MaaSSim: agent-based two-sided mobility platform simulator
 
 
 [![CodeFactor](https://www.codefactor.io/repository/github/rafalkucharskipk/maassim/badge)](https://www.codefactor.io/repository/github/rafalkucharskipk/maassim)
