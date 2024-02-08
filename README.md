@@ -1,4 +1,4 @@
-# Supplementary material for the paper: Modelling the Rise and Fall of Two-sided Markets
+# AAMAS-2024, supplementary material for the paper: Modelling the Rise and Fall of Two-sided Markets
 You can access the paper and the reproducible code and results [here](https://github.com/Farnoud-G/MaaSSim/tree/Coevolution/docs/AAMAS-2024)
 
 
