@@ -4,7 +4,7 @@
 
 ## Supplementary material and reproducible code
 
-This repository contains the reproducible code to rerun the experiments presented in the paper XXXX.
+This repository contains the reproducible code to rerun the experiments presented in the paper Modelling the Rise and Fall of Two-sided Markets.
 
 It contains:
 
