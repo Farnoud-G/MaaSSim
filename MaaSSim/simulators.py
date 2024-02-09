@@ -189,7 +189,8 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
     
     state_size = 2;      
     action_size = 3
-    agent = DQNAgent(state_size, action_size)# if input_agent is None else input_agent
+    rl = params.lr
+    agent = DQNAgent(state_size, action_size, rl)# if input_agent is None else input_agent
     done = False
     batch_size = 32
     stp = 0.05
@@ -260,7 +261,7 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
 
         agent.memorize(state, action, reward, next_state, done)
         
-        sim.RL.loc[len(sim.RL)] = [state, action, revenue,reward, next_state,nP,nV, sim.platforms.fare[1],
+        sim.RL.loc[len(sim.RL)] = [state, action, revenue, reward, next_state,nP,nV, sim.platforms.fare[1],
                                    sim.platforms.comm_rate[1], params.platforms.discount,
                                    sim.platforms.daily_marketing[1]]
         
