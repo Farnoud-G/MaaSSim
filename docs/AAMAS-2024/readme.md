@@ -14,7 +14,7 @@ It contains:
 * input [demand data](https://github.com/Farnoud-G/MaaSSim/blob/Coevolution/docs/AAMAS-2024/Amsterdam_requests.csv) for the Amsterdam
 * [figures](https://github.com/Farnoud-G/MaaSSim/tree/Coevolution/docs/AAMAS-2024/Figures) from the experiments presented in the paper
 * the [main paper]() in pdf format
-* the [appendix]()
+* the [appendix](https://github.com/Farnoud-G/MaaSSim/blob/Coevolution/docs/AAMAS-2024/appendix_AAMAS_2024.pdf)
 
 ----
 (c) 2024 Farnoud Gahsemi and Rafal Kucharski, Jagiellonian University, Krakow, Poland
