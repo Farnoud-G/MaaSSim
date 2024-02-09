@@ -1,4 +1,4 @@
-# Title, Authors
+# Modelling the Rise and Fall of Two-sided Markets, Farnoud Ghasemi and Rafal Kucharski
 
 ---
 
