@@ -189,8 +189,8 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
     
     state_size = 2;      
     action_size = 3
-    rl = params.lr
-    agent = DQNAgent(state_size, action_size, rl)# if input_agent is None else input_agent
+    lr = params.lr
+    agent = DQNAgent(state_size, action_size, lr)# if input_agent is None else input_agent
     done = False
     batch_size = 32
     stp = 0.05
@@ -234,8 +234,13 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         sim.make_and_run(run_id=day)  # prepare and SIM
         sim.output()  # calc results
         
+        # Number of agents participated today (td)
+        nP_td = sim.res[day].pax_exp.OUT.value_counts().get(False, 0)
+        nV_td = sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
+        
         # Number of agents will be participating tomorrow
-        nP = sim.res[day].pax_exp.OUT_TOMORROW.value_counts().get(False, 0)
+        # nP = sim.res[day].pax_exp.OUT_TOMORROW.value_counts().get(False, 0)
+        nP = params.nP # due to fixed demand
         nV = sim.res[day].veh_exp.OUT_TOMORROW.value_counts().get(False, 0)
         
         next_state = np.asarray([nP, nV])
@@ -256,7 +261,7 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         # reward = 1000*((0.15) * revenue / 2640) + 1000*(0.85)*(  (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) +  (sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
         #========================================================================================
         # reward=np.round(reward,2)
-        print('nP = ', nP, '   nV = ',nV, '    reward=', reward)
+        print('nP = ', nP_td, '   nV = ',nV_td, '    reward=', reward)
         # print('mean reward so far:',sim.RL['reward'].mean())
 
         agent.memorize(state, action, reward, next_state, done)

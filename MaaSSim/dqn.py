@@ -10,7 +10,7 @@ from keras.optimizers import Adam
 EPISODES = 1000
 
 class DQNAgent:
-    def __init__(self, state_size, action_size, rl):
+    def __init__(self, state_size, action_size, lr):
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
@@ -18,7 +18,7 @@ class DQNAgent:
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.learning_rate = rl
+        self.learning_rate = lr
         self.model = self._build_model()
 
     def _build_model(self):

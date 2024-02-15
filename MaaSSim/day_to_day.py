@@ -234,7 +234,8 @@ def d2d_kpi_pax(*args,**kwargs):
     PREFERS_OTHER_SERVICE.index = PREFERS_OTHER_SERVICE.values
     ret['OUT'] = PREFERS_OTHER_SERVICE
     ret['OUT'] = ~ret['OUT'].isnull()   
-    ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
+    ret['fulfilled'] = ret.apply(lambda row: True if row['ARRIVES_AT_DROPOFF']>0 else False, axis=1)
+    ret['mu'] = ret.apply(lambda row: 1 if row['fulfilled'] == True else 0, axis=1)
     ret['nDAYS_HAILED'] = ret['mu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_HAILED + ret['mu']
     ret['TRAVEL'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
     ret['ACTUAL_WT'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
@@ -324,7 +325,7 @@ def d2d_kpi_pax(*args,**kwargs):
 
     ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
                'MARKETING_U','WOM_U','INFORMED', 'plat_revenue', 'plat_revenue_wod','MATCHING_T', 
-               'rh_Ux', 'rh_P', 'OUT_TOMORROW'] + [_.name for _ in travellerEvent]]
+               'rh_Ux', 'rh_P', 'OUT_TOMORROW', 'fulfilled'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])
@@ -351,8 +352,8 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
     disc_rh_fare = (1-disc)*rh_fare
     rh_U = -(1+hate)*(disc_rh_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
     
-    ret.at[row.name, 'plat_revenue'] = rh_fare*(sim.platforms.loc[1].comm_rate-disc) if ret.mu[row.name]==1 else 0
-    ret.at[row.name, 'plat_revenue_wod'] = rh_fare*(sim.platforms.loc[1].comm_rate) if ret.mu[row.name]==1 else 0
+    ret.at[row.name, 'plat_revenue'] = rh_fare*(sim.platforms.loc[1].comm_rate-disc) if ret.fulfilled[row.name]==1 else 0
+    ret.at[row.name, 'plat_revenue_wod'] = rh_fare*(sim.platforms.loc[1].comm_rate) if ret.fulfilled[row.name]==1 else 0
 
     return rh_U
 
