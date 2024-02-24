@@ -193,7 +193,7 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
     agent = DQNAgent(state_size, action_size, lr)# if input_agent is None else input_agent
     done = False
     batch_size = 32
-    stp = 0.05
+    stp = params.stp
     
     print('initialization-----------------------')
     print('state_size = ',state_size, '  action_size = ',action_size, '  Lever = Commission', '  step = ',stp)
@@ -221,7 +221,6 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
             comm_rate = comm_rate
         comm_rate = round(comm_rate, 2)
         sim.platforms.comm_rate[1] = comm_rate
-        print('comm_rate = ', comm_rate)
 
         # 3- Discount adjustment -------------------------------------------
         # params.platforms.discount = 0.40 if 100<=day<200 else 0
@@ -261,7 +260,9 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         # reward = 1000*((0.15) * revenue / 2640) + 1000*(0.85)*(  (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) +  (sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
         #========================================================================================
         # reward=np.round(reward,2)
-        print('nP = ', nP_td, '   nV = ',nV_td, '    reward=', reward)
+        
+        print('comm_rate = ', comm_rate)
+        print('nP = ',nP_td, '  nV = ',nV_td, '  comm_rate = ',comm_rate, '  reward=',reward)
         # print('mean reward so far:',sim.RL['reward'].mean())
 
         agent.memorize(state, action, reward, next_state, done)
@@ -269,6 +270,9 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         sim.RL.loc[len(sim.RL)] = [state, action, revenue, reward, next_state,nP,nV, sim.platforms.fare[1],
                                    sim.platforms.comm_rate[1], params.platforms.discount,
                                    sim.platforms.daily_marketing[1]]
+        
+        if len(agent.memory) > batch_size:
+            agent.replay(batch_size)
         
         if sim.functions.f_stop_crit(sim=sim):
             break

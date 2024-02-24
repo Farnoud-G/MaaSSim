@@ -344,7 +344,7 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
         disc = params.platforms.discount #####
     
     if row.name in unfulfilled_requests:
-        hate = 1
+        hate = 5 # 1 
     else:
         hate = 0
 

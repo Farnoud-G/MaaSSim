@@ -59,7 +59,7 @@ params.d2d.B_Experience = 0.80
 params.d2d.B_WOM = 0.2
 params.d2d.B_Marketing = 0.0
 params.d2d.diffusion_speed = 10/100 # speed for M is twice greater than WOM.=======================
-params.d2d.m = 5 #for TRB
+params.d2d.m = 7 #5 for TRB
 params.d2d.Eini_att = 0.01
 params.d2d.adj_s = 2
 params.VoT = 10.63 # value of time per hour
@@ -68,6 +68,7 @@ params.assert_me = False
 params.paths.requests = 'Amsterdam_requests.csv'
 
 params.lr = float(sys.argv[2])
+params.stp = float(sys.argv[3])
 params.nP = 2000
 params.nV = 200
 params.nD = 8000
@@ -77,7 +78,7 @@ params.d2d.res_wage = params.simTime*10.63 #euro
 # sim = MaaSSim.simulators.simulate(params=params, f_driver_out=S_driver_opt_out,f_trav_out=dummy_False,
 #                                   kpi_veh=d2d_kpi_veh,kpi_pax=d2d_kpi_pax, logger_level=logging.WARNING)
 
-sim, agent_new = MaaSSim.simulators.simulate_RL_main(input_agent=None,params=params, f_driver_out=S_driver_opt_out,f_trav_out=dummy_False,
+sim, agent_new = MaaSSim.simulators.simulate_RL_main(input_agent=None,params=params, f_driver_out=S_driver_opt_out,f_trav_out=S_traveller_opt_out,
                                   kpi_veh=d2d_kpi_veh,kpi_pax=d2d_kpi_pax, logger_level=logging.WARNING)
 
 
@@ -112,7 +113,7 @@ for d in range(0,params.nD):
         df_s.at[d, col] = veh_exp[veh_exp.OUT==False][col].mean()
 
 
-run = sys.argv[1] # input
-df_d.to_csv('csv/demand_run_{}.csv'.format(run))
-df_s.to_csv('csv/supply_run_{}.csv'.format(run))
-sim.RL.to_csv('csv/rl_run_{}.csv'.format(run))
+run_id = sys.argv[1] # input
+df_d.to_csv('csv/demand_run_{}.csv'.format(run_id))
+df_s.to_csv('csv/supply_run_{}.csv'.format(run_id))
+sim.RL.to_csv('csv/rl_run_{}.csv'.format(run_id))
