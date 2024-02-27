@@ -164,6 +164,11 @@ def d2d_kpi_veh(*args,**kwargs):
     # return bool(working_P < random.uniform(0,1))
     
     ret['working_U'] = ret.apply(lambda row: params.d2d.B_Experience*row.EXPERIENCE_U + params.d2d.B_Marketing*row.MARKETING_U + params.d2d.B_WOM*row.WOM_U, axis=1)
+    
+    # working_U=-0.4 results in participation_probability=1% 
+    ret['working_U'] = np.where((round(ret['working_U'], 5)<= 0.01) & (ret['nDAYS_WORKED'] > 0), -0.4, ret['working_U'])
+
+    
     ret['working_P'] = ret.apply(lambda row: (math.exp(params.d2d.m*row.working_U))/(math.exp(params.d2d.m*row.working_U) + math.exp(params.d2d.m*not_working_U)), axis=1)
     
     ret['OUT_TOMORROW'] = ret.apply(lambda row: True if row.INFORMED==False else bool(row.working_P < random.uniform(0,1)), axis=1)
@@ -236,7 +241,9 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['OUT'] = ~ret['OUT'].isnull()   
     ret['fulfilled'] = ret.apply(lambda row: True if row['ARRIVES_AT_DROPOFF']>0 else False, axis=1)
     ret['mu'] = ret.apply(lambda row: 1 if row['fulfilled'] == True else 0, axis=1)
+    ret['wu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
     ret['nDAYS_HAILED'] = ret['mu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_HAILED + ret['mu']
+    ret['nDAYS_TRY'] = ret['wu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_TRY + ret['wu']
     ret['TRAVEL'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
     ret['ACTUAL_WT'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['MATCHING_T'] = (ret['RECEIVES_OFFER'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
@@ -318,12 +325,16 @@ def d2d_kpi_pax(*args,**kwargs):
     # return bool(rh_P < random.uniform(0,1))
     
     ret['rh_Ux'] = ret.apply(lambda row: params.d2d.B_Experience*row.EXPERIENCE_U + params.d2d.B_Marketing*row.MARKETING_U + params.d2d.B_WOM*row.WOM_U, axis=1)
+    
+    # rh_Ux=-0.2 results in participation_probability=3% 
+    ret['rh_Ux'] = np.where((round(ret['rh_Ux'], 5)<= 0.01) & (ret['nDAYS_TRY'] > 0), -0.2, ret['rh_Ux'])
+    
     ret['rh_P'] = ret.apply(lambda row: (math.exp(params.d2d.m*row.rh_Ux))/(math.exp(params.d2d.m*row.rh_Ux)+math.exp(params.d2d.m*alt_U)), axis=1)
     ret['OUT_TOMORROW'] = ret.apply(lambda row: True if row.INFORMED==False else bool(row.rh_P < random.uniform(0,1)), axis=1)
     
     # ================================================================================================= #
 
-    ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
+    ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu', 'wu','nDAYS_HAILED','nDAYS_TRY','EXPERIENCE_U',
                'MARKETING_U','WOM_U','INFORMED', 'plat_revenue', 'plat_revenue_wod','MATCHING_T', 
                'rh_Ux', 'rh_P', 'OUT_TOMORROW', 'fulfilled'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'

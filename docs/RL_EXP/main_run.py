@@ -71,7 +71,7 @@ params.lr = float(sys.argv[2])
 params.stp = float(sys.argv[3])
 params.nP = 2000
 params.nV = 200
-params.nD = 8000
+params.nD = 2000
 params.simTime = 4
 params.d2d.res_wage = params.simTime*10.63 #euro
 
@@ -83,37 +83,38 @@ sim, agent_new = MaaSSim.simulators.simulate_RL_main(input_agent=None,params=par
 
 
 params.nD = len(sim.res)
+if params.nD%100==0:
 
-df_s = pd.DataFrame()
-df_d = pd.DataFrame()
+    df_s = pd.DataFrame()
+    df_d = pd.DataFrame()
 
-for d in range(0,params.nD):
-    
-    pax_exp = sim.res[d].pax_exp
-    df_d.at[d, 'EXPERIENCE_U'] = pax_exp.EXPERIENCE_U.mean()
-    df_d.at[d, 'WOM_U'] = pax_exp.WOM_U.mean()
-    df_d.at[d, 'MARKETING_U'] = pax_exp.MARKETING_U.mean()
-    df_d.at[d, 'OUT'] = pax_exp.OUT.value_counts().get(False, 0)
-    
-    veh_exp = sim.res[d].veh_exp
-    df_s.at[d, 'EXPERIENCE_U'] = veh_exp.EXPERIENCE_U.mean()
-    df_s.at[d, 'WOM_U'] = veh_exp.WOM_U.mean()
-    df_s.at[d, 'MARKETING_U'] = veh_exp.MARKETING_U.mean()
-    df_s.at[d, 'OUT'] = veh_exp.OUT.value_counts().get(False, 0)
-    
-    
-    ld = sim.res[0].pax_exp.columns.values.tolist()
-    ldn = [i for i in ld if i not in ['EXPERIENCE_U', 'WOM_U', 'MARKETING_U', 'OUT']]
-    for col in ldn:
-        df_d.at[d, col] = pax_exp[pax_exp.OUT==False][col].mean()
-        
-    ls = sim.res[0].veh_exp.columns.values.tolist()
-    lsn = [i for i in ls if i not in ['EXPERIENCE_U', 'WOM_U', 'MARKETING_U', 'OUT']]
-    for col in lsn:
-        df_s.at[d, col] = veh_exp[veh_exp.OUT==False][col].mean()
+    for d in range(0,params.nD):
+
+        pax_exp = sim.res[d].pax_exp
+        df_d.at[d, 'EXPERIENCE_U'] = pax_exp.EXPERIENCE_U.mean()
+        df_d.at[d, 'WOM_U'] = pax_exp.WOM_U.mean()
+        df_d.at[d, 'MARKETING_U'] = pax_exp.MARKETING_U.mean()
+        df_d.at[d, 'OUT'] = pax_exp.OUT.value_counts().get(False, 0)
+
+        veh_exp = sim.res[d].veh_exp
+        df_s.at[d, 'EXPERIENCE_U'] = veh_exp.EXPERIENCE_U.mean()
+        df_s.at[d, 'WOM_U'] = veh_exp.WOM_U.mean()
+        df_s.at[d, 'MARKETING_U'] = veh_exp.MARKETING_U.mean()
+        df_s.at[d, 'OUT'] = veh_exp.OUT.value_counts().get(False, 0)
 
 
-run_id = sys.argv[1] # input
-df_d.to_csv('csv/demand_run_{}.csv'.format(run_id))
-df_s.to_csv('csv/supply_run_{}.csv'.format(run_id))
-sim.RL.to_csv('csv/rl_run_{}.csv'.format(run_id))
+        ld = sim.res[0].pax_exp.columns.values.tolist()
+        ldn = [i for i in ld if i not in ['EXPERIENCE_U', 'WOM_U', 'MARKETING_U', 'OUT']]
+        for col in ldn:
+            df_d.at[d, col] = pax_exp[pax_exp.OUT==False][col].mean()
+
+        ls = sim.res[0].veh_exp.columns.values.tolist()
+        lsn = [i for i in ls if i not in ['EXPERIENCE_U', 'WOM_U', 'MARKETING_U', 'OUT']]
+        for col in lsn:
+            df_s.at[d, col] = veh_exp[veh_exp.OUT==False][col].mean()
+
+
+    run_id = sys.argv[1] # input
+    df_d.to_csv('csv/demand_run_{}.csv'.format(run_id))
+    df_s.to_csv('csv/supply_run_{}.csv'.format(run_id))
+    sim.RL.to_csv('csv/rl_run_{}.csv'.format(run_id))

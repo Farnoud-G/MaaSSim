@@ -185,25 +185,25 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
     inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
 
     sim = Simulator(inData, params=params, **kwargs)  # initialize
-    sim.platforms.comm_rate[1] = 0.10
     
-    state_size = 2;      
+    sim.platforms.comm_rate[1] = 0.0 # 0.10
+    state_size = 3      
     action_size = 3
     lr = params.lr
     agent = DQNAgent(state_size, action_size, lr)# if input_agent is None else input_agent
     done = False
-    batch_size = 32
+    batch_size = params.batch_size #32
     stp = params.stp
     
     print('initialization-----------------------')
-    print('state_size = ',state_size, '  action_size = ',action_size, '  Lever = Commission', '  step = ',stp)
+    print('state_size = ',state_size, '  action_size = ',action_size, '  bs = ',batch_size, '  step_size = ',stp, '  lr = ',lr, '  Lever = Commission')
     print('fare = ', sim.platforms.fare[1], '  comm_rate = ', sim.platforms.comm_rate[1], '  disc = ',params.platforms.discount, '  marketing = 0-100')
     print('-------------------------------------')
 
     for day in range(params.get('nD', 1)):  # run iterations
         print('Day = ', day)
         
-        state = np.reshape(np.asarray([0, 0]), [1, state_size]) if day==0 else next_state
+        state = np.reshape(np.asarray([0, 0, 0]), [1, state_size]) if day==0 else next_state
         
         # Strategy============================================================
         
@@ -212,7 +212,8 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
 
         # 2- Commission rate adjustment -------------------------------------
         action = agent.act(state)
-        comm_rate = sim.platforms.comm_rate[1]
+        prev_comm_rate = sim.platforms.comm_rate[1]
+        comm_rate = prev_comm_rate
         if action == 0:
             comm_rate = comm_rate + stp if comm_rate + stp < 1 else 1
         elif action == 1:
@@ -220,6 +221,7 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         elif action == 2:
             comm_rate = comm_rate
         comm_rate = round(comm_rate, 2)
+        # comm_rate = 1.0
         sim.platforms.comm_rate[1] = comm_rate
 
         # 3- Discount adjustment -------------------------------------------
@@ -238,11 +240,11 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         nV_td = sim.res[day].veh_exp.OUT.value_counts().get(False, 0)
         
         # Number of agents will be participating tomorrow
-        # nP = sim.res[day].pax_exp.OUT_TOMORROW.value_counts().get(False, 0)
-        nP = params.nP # due to fixed demand
+        nP = sim.res[day].pax_exp.OUT_TOMORROW.value_counts().get(False, 0)
+        # nP = params.nP # due to fixed demand
         nV = sim.res[day].veh_exp.OUT_TOMORROW.value_counts().get(False, 0)
         
-        next_state = np.asarray([nP, nV])
+        next_state = np.asarray([nP, nV, prev_comm_rate])
         next_state = np.reshape(next_state, [1, state_size])
         # Calculating new state
         max_revenue = 2640 # Euro per day
@@ -261,7 +263,6 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         #========================================================================================
         # reward=np.round(reward,2)
         
-        print('comm_rate = ', comm_rate)
         print('nP = ',nP_td, '  nV = ',nV_td, '  comm_rate = ',comm_rate, '  reward=',reward)
         # print('mean reward so far:',sim.RL['reward'].mean())
 
