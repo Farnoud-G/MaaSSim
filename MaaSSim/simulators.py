@@ -221,7 +221,7 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         elif action == 2:
             comm_rate = comm_rate
         comm_rate = round(comm_rate, 2)
-        # comm_rate = 1.0
+        comm_rate = 0.20
         sim.platforms.comm_rate[1] = comm_rate
 
         # 3- Discount adjustment -------------------------------------------
@@ -272,8 +272,8 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
                                    sim.platforms.comm_rate[1], params.platforms.discount,
                                    sim.platforms.daily_marketing[1]]
         
-        if len(agent.memory) > batch_size:
-            agent.replay(batch_size)
+        # if len(agent.memory) > batch_size:
+        #     agent.replay(batch_size)
         
         if sim.functions.f_stop_crit(sim=sim):
             break
