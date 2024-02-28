@@ -187,6 +187,7 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
     sim = Simulator(inData, params=params, **kwargs)  # initialize
     
     sim.platforms.comm_rate[1] = 0.0 # 0.10
+    max_revenue = 1
     state_size = 3      
     action_size = 3
     lr = params.lr
@@ -221,7 +222,7 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         elif action == 2:
             comm_rate = comm_rate
         comm_rate = round(comm_rate, 2)
-        comm_rate = 0.20
+        # comm_rate = 0.20
         sim.platforms.comm_rate[1] = comm_rate
 
         # 3- Discount adjustment -------------------------------------------
@@ -247,23 +248,21 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
         next_state = np.asarray([nP, nV, prev_comm_rate])
         next_state = np.reshape(next_state, [1, state_size])
         # Calculating new state
-        max_revenue = 2640 # Euro per day
         revenue = sim.res[day].pax_kpi.plat_revenue['sum'] if len(sim.res) > 0 else 0
         
         # 1) Revenue only===========================================================================
-        reward = revenue
+        # reward = revenue
         
         # 2) Market share only======================================================================
         # reward = (1/2)*nP/params.nP+(1/2)*nV/params.nV
         
         # 3) Revenu + Market share==================================================================
-        # reward = ((1/3)*revenue/max_revenue)+((1/3)*nV/params.nP)+((1/3)*nV/params.nV)
+        max_revenue = revenue if revenue>max_revenue else max_revenue # Euro per day
+        reward = ((1/3)*revenue/max_revenue)+((1/3)*nP/params.nP)+((1/3)*nV/params.nV)
         
-        # reward = 1000*((0.15) * revenue / 2640) + 1000*(0.85)*(  (sim.res[day].pax_exp.OUT.value_counts().get(False, 0) / params.nP) +  (sim.res[day].veh_exp.OUT.value_counts().get(False, 0) / params.nV))
         #========================================================================================
-        # reward=np.round(reward,2)
         
-        print('nP = ',nP_td, '  nV = ',nV_td, '  comm_rate = ',comm_rate, '  reward=',reward)
+        print('nP=',nP_td, '  nV=',nV_td, '  comm_rate=',comm_rate, '  plat_revenue=',round(revenue,2), '  reward=',round(reward,2), '  max_revenue=', round(max_revenue,2))
         # print('mean reward so far:',sim.RL['reward'].mean())
 
         agent.memorize(state, action, reward, next_state, done)
@@ -272,8 +271,8 @@ def simulate_RL_main(input_agent=None,config="data/config.json", inData=None, pa
                                    sim.platforms.comm_rate[1], params.platforms.discount,
                                    sim.platforms.daily_marketing[1]]
         
-        # if len(agent.memory) > batch_size:
-        #     agent.replay(batch_size)
+        if len(agent.memory) > batch_size:
+            agent.replay(batch_size)
         
         if sim.functions.f_stop_crit(sim=sim):
             break

@@ -165,22 +165,22 @@ def d2d_kpi_veh(*args,**kwargs):
     
     ret['working_U'] = ret.apply(lambda row: params.d2d.B_Experience*row.EXPERIENCE_U + params.d2d.B_Marketing*row.MARKETING_U + params.d2d.B_WOM*row.WOM_U, axis=1)
     
-    # working_U=-0.4 results in participation_probability=1% 
-    # ret['working_U'] = np.where((round(ret['working_U'], 5)<= 0.01) & (ret['nDAYS_WORKED'] > 0), -0.4, ret['working_U'])
+#     working_U=-0.4 results in participation_probability=1% 
+#     ret['working_U'] = np.where((round(ret['working_U'], 5)<= 0.01) & (ret['nDAYS_WORKED'] > 0), -0.4, ret['working_U'])
     
         
-    if run_id == 0:
-        ret['p_days']= 0
-    else:
-        ret['p_days']= sim.res[run_id-1].veh_exp.p_days
+#     if run_id == 0:
+#         ret['p_days']= 0
+#     else:
+#         ret['p_days']= sim.res[run_id-1].veh_exp.p_days
         
-        ret['p_days']= np.where((round(ret['working_U'], 5)<= 0.01) & (ret['nDAYS_WORKED'] > 0), 10, 0)
+#         ret['p_days']= np.where((round(ret['working_U'], 5)<= 0.01) & (ret['nDAYS_WORKED'] > 0), 10, 0)
 
     
     ret['working_P'] = ret.apply(lambda row: (math.exp(params.d2d.m*row.working_U))/(math.exp(params.d2d.m*row.working_U) + math.exp(params.d2d.m*not_working_U)), axis=1)
     
-    # ret['OUT_TOMORROW'] = ret.apply(lambda row: True if row.INFORMED==False else bool(row.working_P < random.uniform(0,1)), axis=1)
-    ret['OUT_TOMORROW'] = np.where((row.INFORMED==False) | (ret['p_days'] > 0), True, False)
+    ret['OUT_TOMORROW'] = ret.apply(lambda row: True if row.INFORMED==False else bool(row.working_P < random.uniform(0,1)), axis=1)
+    # ret['OUT_TOMORROW'] = np.where((row.INFORMED==False) | (ret['p_days'] > 0), True, False)
     #===================================================================
 #     ret['NEGATIVE_INCOME'] = False
 #     yesterday = len(sim.res)
@@ -364,7 +364,7 @@ def rh_U_func(row, sim, unfulfilled_requests, ret):
         disc = params.platforms.discount #####
     
     if row.name in unfulfilled_requests:
-        hate = 5 # 1 
+        hate = 3 # 1 
     else:
         hate = 0
 
