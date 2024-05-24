@@ -237,7 +237,7 @@ def generate_demand(_inData, _params=None, avg_speed=False):
                                               axis=1)
         requests.dist = requests.apply(lambda request: _inData.skim.loc[request.origin, request.destination], axis=1)
 
-    requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist, 's').floor('s'), axis=1)
+    requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist/_params.speeds.ride, 's').floor('s'), axis=1)
     # requests.ttrav = pd.to_timedelta(requests.ttrav)
     if avg_speed:
         requests.ttrav = (pd.to_timedelta(requests.ttrav) / _params.speeds.ride).dt.floor('1s')
@@ -246,8 +246,13 @@ def generate_demand(_inData, _params=None, avg_speed=False):
     requests.index = df.index
     requests.pax_id = df.index
     requests.shareable = False
-
+    #------------------------------------------------
+    requests['PT_fare'] = 1 + (requests.dist/_params.PT_avg_speed) * _params.PT_avg_speed/1000 * 0.175
+    requests['u_PT'] = -requests.PT_fare -(_params.VoT/3600)*(_params.d2d.B_inveh_time*requests.dist/_params.PT_avg_speed) #f#
+    
+    #------------------------------------------------
     _inData.requests = requests
+    _inData.passengers['u_PT'] = _inData.requests.u_PT.copy() #f#
     _inData.passengers.pos = _inData.requests.origin
 
     # _inData.passengers.platforms = _inData.passengers.platforms.apply(lambda x: [1]) #f#
