@@ -198,28 +198,26 @@ def d2d_kpi_veh(*args,**kwargs):
     d = df[df['event_s']=='ARRIVES_AT_DROPOFF']
     if len(d) != 0:
         d['TRIP_FARE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * platforms.loc[sim.vehs[row.veh].platform_id].fare + platforms.loc[sim.vehs[row.veh].platform_id].base_fare, platforms.loc[sim.vehs[row.veh].platform_id].min_fare), axis=1)
-
         ret['TRIP_FARE'] = d.groupby(['veh']).sum().TRIP_FARE
     else:
         ret['TRIP_FARE'] = 0
     
-    ret['platform_id'] = ret.apply(lambda row: sim.vehs[row.name].platform_id if row.OUT==False else 0, axis=1) # zero means PT
+    ret['platform_id'] = ret.apply(lambda row: sim.vehs[row.name].platform_id if row.OUT==False else 0, axis=1) # zero means RW
     ret['REVENUE'] = ret.apply(lambda row: row.TRIP_FARE*(1-platforms.loc[row.platform_id].comm_rate) if row.platform_id>0 else 0, axis=1)    
     ret['COMMISSION'] = ret['TRIP_FARE']-ret['REVENUE']
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
     ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
     ret['nDAYS_WORKED'] = ret['mu'] if run_id == 0 else sim.res[run_id-1].veh_exp.nDAYS_WORKED + ret['mu']
-    ret.fillna(0, inplace=True)
+    ret.fillna(0, inplace=True)    
     
     # Driver adaptation (learning) ------------------------------------ #
     ret['ACTUAL_INC'] = ret.PROFIT    
     
     #====================================================================
-    # Rafal & Farnoud (2022)
-    
     ret['P1_INFORMED'] = False if run_id == 0 else sim.res[run_id-1].veh_exp.P1_INFORMED
     ret['P2_INFORMED'] = False if run_id == 0 else sim.res[run_id-1].veh_exp.P2_INFORMED
+    
     #-------------------------------------------------------
     """ Utility gained through experience"""
 
@@ -355,9 +353,12 @@ def d2d_kpi_pax(*args,**kwargs):
             ret[status.name] = 0  # cover all statuses
     PREFERS_OTHER_SERVICE.index = PREFERS_OTHER_SERVICE.values
     ret['OUT'] = PREFERS_OTHER_SERVICE
-    ret['OUT'] = ~ret['OUT'].isnull()   
-    ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
+    ret['OUT'] = ~ret['OUT'].isnull() 
+    ret['fulfilled'] = ret.apply(lambda row: True if row['ARRIVES_AT_DROPOFF']>0 else False, axis=1)
+    ret['mu'] = ret.apply(lambda row: 1 if row['fulfilled'] == True else 0, axis=1)
+    ret['wu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
     ret['nDAYS_HAILED'] = ret['mu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_HAILED + ret['mu']
+    ret['nDAYS_TRY'] = ret['wu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_TRY + ret['wu']
     ret['TRAVEL'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
     ret['ACTUAL_WT'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['MATCHING_T'] = (ret['RECEIVES_OFFER'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
@@ -456,7 +457,7 @@ def d2d_kpi_pax(*args,**kwargs):
     
     # ===================================================================================== #
 
-    ret = ret[['P_U','PT_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','P1_EXPERIENCE_U',
+    ret = ret[['P_U','PT_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED', 'nDAYS_TRY','P1_EXPERIENCE_U',
                'P2_EXPERIENCE_U','P1_MARKETING_U','P2_MARKETING_U','P1_WOM_U','P2_WOM_U',
                'P1_INFORMED', 'P2_INFORMED', 'platform_id', 'plat_revenue','MATCHING_T'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
