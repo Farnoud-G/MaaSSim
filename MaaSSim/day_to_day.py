@@ -305,9 +305,13 @@ def d2d_kpi_pax(*args,**kwargs):
             ret[status.name] = 0  # cover all statuses
     PREFERS_OTHER_SERVICE.index = PREFERS_OTHER_SERVICE.values
     ret['OUT'] = PREFERS_OTHER_SERVICE
-    ret['OUT'] = ~ret['OUT'].isnull()   
-    ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
+    ret['OUT'] = ~ret['OUT'].isnull()  
+    
+    ret['fulfilled'] = ret.apply(lambda row: True if row['ARRIVES_AT_DROPOFF']>0 else False, axis=1)
+    ret['mu'] = ret.apply(lambda row: 1 if row['fulfilled'] == True else 0, axis=1)
+    ret['wu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
     ret['nDAYS_HAILED'] = ret['mu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_HAILED + ret['mu']
+    ret['nDAYS_TRY'] = ret['wu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_TRY + ret['wu']
     ret['TRAVEL'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
     ret['ACTUAL_WT'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['MATCHING_T'] = (ret['RECEIVES_OFFER'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
@@ -379,7 +383,7 @@ def d2d_kpi_pax(*args,**kwargs):
     
     # ================================================================================================= #
 
-    ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','EXPERIENCE_U',
+    ret = ret[['rh_U','alt_U','ACTUAL_WT', 'U_dif','OUT','mu', 'wu','nDAYS_HAILED', 'nDAYS_TRY','EXPERIENCE_U',
                'MARKETING_U','WOM_U','INFORMED', 'plat_revenue','MATCHING_T', 'VoT'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
