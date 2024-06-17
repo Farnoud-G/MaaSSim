@@ -124,57 +124,20 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         #Strategy============================================================        
         # print(sim.platforms)
         # 1- Trip fare adjustment -------------------------------------------
-        # sim.platforms.fare = params.platforms.fare
+        sim.platforms.fare[1] = 1.2
+        sim.platforms.fare[2] = 1.2
         
         # 2- Commission rate adjustment -------------------------------------
-        # if day==300:
-        #     # sim.platforms.fare[1] = 2 #euro/km
-        #     sim.platforms.comm_rate[1] = 0.50
-        #     sim.platforms.comm_rate[2] = 0.50
-        #     print('Tragedy STARTS!')
-            
-        # if 150<=day<250:
-        #     sim.platforms.comm_rate[1] = 0.20
-        # elif 250<=day<350:
-        #     sim.platforms.comm_rate[1] = 0.50
-        # elif 350<=day:
-        #     sim.platforms.comm_rate[1] = 0.20
-        # else:
-        #     sim.platforms.comm_rate[1] = 0.0
+        sim.platforms.comm_rate[1] = 0.20
+        sim.platforms.comm_rate[2] = 0.20
 
         # 3- Discount adjustment -------------------------------------------
-        if 500<=day<600:
-            sim.platforms.discount[1] = 0.40
-            # sim.platforms.discount[2] = 0.40
-            # sim.platforms.comm_rate[1] = 0.40
-        else:
-            sim.platforms.discount[1] = 0
-            # sim.platforms.discount[2] = 0
-            # sim.platforms.comm_rate[1] = 0
+        sim.platforms.discount[1] = 0.0
+        sim.platforms.discount[2] = 0.0
             
-        if 500<=day<600:
-            # sim.platforms.discount[1] = 0.40
-            sim.platforms.discount[2] = 0.40
-            # sim.platforms.comm_rate[2] = -0.40
-        else:
-            # sim.platforms.discount[1] = 0
-            sim.platforms.discount[2] = 0
-            # sim.platforms.comm_rate[2] = 0
-            
-        
-        
         # 4- Marketing adjustment ------------------------------------------
-        if 0<=day<100:
-            sim.platforms.daily_marketing[1] = True
-            sim.platforms.daily_marketing[2] = True
-        else:
-            sim.platforms.daily_marketing[1] = True
-            # sim.platforms.daily_marketing[2] = False
-        
-        # if 25<=day<125:
-        #     sim.platforms.daily_marketing[2] = True
-        # else:
-        #     sim.platforms.daily_marketing[2] = False
+        sim.platforms.daily_marketing[1] = True
+        sim.platforms.daily_marketing[2] = True
         
         # price-cutting -----------------------------------------------------
 #         if day>149:

@@ -457,7 +457,7 @@ def d2d_kpi_pax(*args,**kwargs):
     
     # ===================================================================================== #
 
-    ret = ret[['P_U','PT_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED', 'nDAYS_TRY','P1_EXPERIENCE_U',
+    ret = ret[['P_U','PT_U','ACTUAL_WT', 'U_dif','OUT','mu', 'wu','nDAYS_HAILED', 'nDAYS_TRY','P1_EXPERIENCE_U',
                'P2_EXPERIENCE_U','P1_MARKETING_U','P2_MARKETING_U','P1_WOM_U','P2_WOM_U',
                'P1_INFORMED', 'P2_INFORMED', 'platform_id', 'plat_revenue','MATCHING_T'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
