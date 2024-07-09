@@ -14,19 +14,36 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     """
     sim = veh.sim
     params = sim.params
+    run_id = sim.run_id
     RW_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     alts_u = {'RW': RW_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
     alts_x = {'RW': 'Nan', 'P1': 'Nan', 'P2': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
     alts_p = {'RW': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
     nPM = 0
 
+    p1_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P1_INFORMED.loc[veh.id]
+    p2_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P2_INFORMED.loc[veh.id]
+        
+    # punishment version 2 ------------------------------------------------------------------------ 
+    P1_hate = 1 if run_id == 0 or sim.res[run_id-1].veh_exp.P1_hate.loc[veh.id] == 0 else sim.res[run_id-1].veh_exp.P1_hate.loc[veh.id]
+    P2_hate = 1 if run_id == 0 or sim.res[run_id-1].veh_exp.P2_hate.loc[veh.id] == 0 else sim.res[run_id-1].veh_exp.P2_hate.loc[veh.id]
+    
+    c1 = P1_hate - params.punish_threshold+1 ; c2 = P2_hate - params.punish_threshold+1
+
+    if p1_informed and P1_hate > params.punish_threshold:
+        if random.uniform(0,1) < 1-(1/c1): p1_informed = False
+        else: p1_informed = True
+        
+    if p2_informed and P2_hate > params.punish_threshold:
+        if random.uniform(0,1) < 1-(1/c2): p2_informed = False
+        else: p2_informed = True
+    
     # P1 utilization-------------------------------------------------------------------
-    p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_INFORMED.loc[veh.id]
     if p1_informed==True:
         
-        P1_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_EXPERIENCE_U.loc[veh.id]
-        P1_MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_MARKETING_U.loc[veh.id]
-        P1_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_WOM_U.loc[veh.id]
+        P1_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_EXPERIENCE_U.loc[veh.id]
+        P1_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_MARKETING_U.loc[veh.id]
+        P1_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_WOM_U.loc[veh.id]
         
         P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
         alts_u['plats']['P1'] = P1_U
@@ -34,19 +51,18 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         veh.veh.P1_U = P1_U
     
     #P2 utilization---------------------------------------------------------------------
-    p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_INFORMED.loc[veh.id]
     if p2_informed==True:
 
-        P2_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_EXPERIENCE_U.loc[veh.id]
-        P2_MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_MARKETING_U.loc[veh.id]
-        P2_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_WOM_U.loc[veh.id]
+        P2_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_EXPERIENCE_U.loc[veh.id]
+        P2_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_MARKETING_U.loc[veh.id]
+        P2_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_WOM_U.loc[veh.id]
         
         P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
         alts_u['plats']['P2'] = P2_U
         nPM += 1
         veh.veh.P2_U = P2_U
     
-    #=====================================================================================
+    # -----------------------------------------------------------------------------------
     if nPM == 0: # there is only one choice RW
         return True  
             
@@ -67,7 +83,7 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         for alt in alts_x:
             alts_p[alt] = (alts_x[alt]/(alts_x['RW'] + x_w))*alts_p['plats'][alt] if alt!='RW' else alts_x[alt]/(alts_x['RW'] + x_w)
 
-    #=====================================================================================
+    #-----------------------------------------------------------------------------------------
     rand_v = random.uniform(0,1)
 
     if rand_v <= alts_p['RW']:
@@ -83,11 +99,13 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         veh.platform = veh.sim.plats[veh.veh.platform]
         return False
 
+#=====================================================================================
 
 def S_traveller_opt_out(pax, **kwargs):
     
     sim = pax.sim
     params = sim.params
+    run_id = sim.run_id
     PT_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
     
     alts_u = {'PT': PT_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
@@ -95,13 +113,29 @@ def S_traveller_opt_out(pax, **kwargs):
     alts_p = {'PT': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
     nPM = 0
     
+    p1_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P1_INFORMED.loc[pax.id]
+    p2_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P2_INFORMED.loc[pax.id]
+
+    # punishment version 2 -------------------------------------------------------------
+    P1_hate = 1 if run_id == 0 or sim.res[run_id-1].pax_exp.P1_hate.loc[pax.id] == 0 else sim.res[run_id-1].pax_exp.P1_hate.loc[pax.id]
+    P2_hate = 1 if run_id == 0 or sim.res[run_id-1].pax_exp.P2_hate.loc[pax.id] == 0 else sim.res[run_id-1].pax_exp.P2_hate.loc[pax.id]
+    
+    c1 = P1_hate - params.punish_threshold+1 ; c2 = P2_hate - params.punish_threshold+1
+
+    if p1_informed and P1_hate>params.punish_threshold:
+        if random.uniform(0,1) < 1-(1/c1): p1_informed = False
+        else: p1_informed = True
+        
+    if p2_informed and P2_hate>params.punish_threshold:
+        if random.uniform(0,1) < 1-(1/c2): p2_informed = False
+        else: p2_informed = True
+    
     #P1 utilization---------------------------------------------------------------------
-    p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_INFORMED.loc[pax.id]
     if p1_informed==True:
         
-        P1_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_EXPERIENCE_U.loc[pax.id]    
-        P1_MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_MARKETING_U.loc[pax.id]
-        P1_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_WOM_U.loc[pax.id]
+        P1_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P1_EXPERIENCE_U.loc[pax.id]    
+        P1_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P1_MARKETING_U.loc[pax.id]
+        P1_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P1_WOM_U.loc[pax.id]
     
         P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
         alts_u['plats']['P1'] = P1_U
@@ -109,19 +143,18 @@ def S_traveller_opt_out(pax, **kwargs):
         pax.pax.P1_U = P1_U
         
     #P2 utilization---------------------------------------------------------------------
-    p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_INFORMED.loc[pax.id]
     if p2_informed==True:
         
-        P2_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_EXPERIENCE_U.loc[pax.id]    
-        P2_MARKETING_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_MARKETING_U.loc[pax.id]
-        P2_WOM_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_WOM_U.loc[pax.id]
+        P2_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P2_EXPERIENCE_U.loc[pax.id]    
+        P2_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P2_MARKETING_U.loc[pax.id]
+        P2_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P2_WOM_U.loc[pax.id]
     
         P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
         alts_u['plats']['P2'] = P2_U
         nPM += 1
         pax.pax.P2_U = P2_U
         
-    #=====================================================================================
+    # -----------------------------------------------------------------------------------
     if nPM == 0: # there is only one choice RW
         return True   
             
@@ -142,7 +175,7 @@ def S_traveller_opt_out(pax, **kwargs):
         for alt in alts_x:
             alts_p[alt] = (alts_x[alt]/(alts_x['PT'] + x_w))*alts_p['plats'][alt] if alt!='PT' else alts_x[alt]/(alts_x['PT'] + x_w)
     
-    #=====================================================================================
+    #-----------------------------------------------------------------------------------
     rand_v = random.uniform(0,1)
 
     if rand_v <= alts_p['PT']:
@@ -158,6 +191,7 @@ def S_traveller_opt_out(pax, **kwargs):
         pax.platform = pax.sim.plats[pax.pax.platform]
         return False
 
+#=====================================================================================
     
 def d2d_kpi_veh(*args,**kwargs):
 
@@ -238,6 +272,31 @@ def d2d_kpi_veh(*args,**kwargs):
     if len(ret_p2)>0:
         ret_p2['P2_EXPERIENCE_U'] = ret_p2.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_P2_EXPERIENCE_U)-1)+params.d2d.adj_s*row.inc_dif))), 1e-2)), axis=1)
         ret.update(ret_p2)
+        
+    
+    #-------------------------------------------------------------    
+#     if run_id==0:
+#         ret['P1_Emin'] = 0; ret['P2_Emin'] = 0
+#         ret['nDays_P1'] = 0; ret['nDays_P2'] = 0
+#         ret['p1_punishment'] = 0; ret['p2_punishment'] = 0
+#     else:
+#         ret['nDays_P1'] = ret.apply(lambda row: 1 + sim.res[run_id-1].veh_exp['nDays_P1'][row.name] if row['platform_id'] == 1 else sim.res[run_id-1].veh_exp['nDays_P1'][row.name], axis=1)
+#         ret['nDays_P2'] = ret.apply(lambda row: 1 + sim.res[run_id-1].veh_exp['nDays_P2'][row.name] if row['platform_id'] == 2 else sim.res[run_id-1].veh_exp['nDays_P2'][row.name], axis=1)
+#         ret['P1_Emin'] = ret.apply(lambda row: 1 + sim.res[run_id-1].veh_exp['P1_Emin'][row.name] if (row['platform_id'] == 1 and row['P1_EXPERIENCE_U'] == 1e-2) else sim.res[run_id-1].veh_exp['P1_Emin'][row.name], axis=1)
+#         ret['P2_Emin'] = ret.apply(lambda row: 1 + sim.res[run_id-1].veh_exp['P2_Emin'][row.name] if (row['platform_id'] == 2 and row['P2_EXPERIENCE_U'] == 1e-2) else sim.res[run_id-1].veh_exp['P2_Emin'][row.name], axis=1)
+
+#         ret['p1_punishment'] = ret['P1_Emin']/ret['nDays_P1']
+#         ret['p2_punishment'] = ret['P2_Emin']/ret['nDays_P2']
+#     ret.fillna(0, inplace=True) 
+    
+    # punishment version 2 -------------------------------------------------------    
+    if run_id==0:
+        ret['P1_hate'] = 0; ret['P2_hate'] = 0
+    else:
+        ret['P1_hate'] = ret.apply(lambda row: determine_p1_hate(row, run_id, sim.res[run_id-1].veh_exp), axis=1)
+        ret['P2_hate'] = ret.apply(lambda row: determine_p2_hate(row, run_id, sim.res[run_id-1].veh_exp), axis=1)         
+    
+    ret.fillna(0, inplace=True)
     
     #--------------------------------------------------------
     """ Utility gained through marketing"""
@@ -300,10 +359,11 @@ def d2d_kpi_veh(*args,**kwargs):
             ret['P2_INFORMED'].loc[v2] = True
     
     #===================================================================
+    # 'P1_Emin', 'P2_Emin', 'nDays_P1', 'nDays_P2', 'p1_punishment', 'p2_punishment'
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'IDLE_TIME', 'PICKUP_DIST',
                'DRIVING_DIST','REVENUE','COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu',
                'P1_INFORMED','P2_INFORMED','P1_EXPERIENCE_U','P2_EXPERIENCE_U','P1_MARKETING_U',
-               'P2_MARKETING_U', 'P1_WOM_U', 'P2_WOM_U','inc_dif', 'platform_id'] + 
+               'P2_MARKETING_U', 'P1_WOM_U', 'P2_WOM_U','inc_dif', 'platform_id', 'P1_hate', 'P2_hate'] + 
               [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
@@ -363,7 +423,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['ACTUAL_WT'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['MATCHING_T'] = (ret['RECEIVES_OFFER'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['OPERATIONS'] = ret['ACCEPTS_OFFER'] + ret['DEPARTS_FROM_PICKUP'] + ret['SETS_OFF_FOR_DEST']
-    ret['platform_id'] = ret.apply(lambda row: sim.pax[row.name].platform_id if row.OUT==False else 0, axis=1) # zero means PT
+    ret['platform_id'] = ret.apply(lambda row: sim.pax[row.name].platform_id if row.OUT==False else 0, axis=1) # zero means PT    
     ret.fillna(0, inplace=True)
     
     #====================================================================
@@ -394,7 +454,28 @@ def d2d_kpi_pax(*args,**kwargs):
     if len(ret_p2)>0:
         ret_p2['P2_EXPERIENCE_U'] = ret_p2.apply(lambda row: min((1-1e-2), max(1/(1+math.exp(params.d2d.learning_d*(ln((1/row.pre_P2_EXPERIENCE_U)-1)+params.d2d.adj_s*row.U_dif))), 1e-2)), axis=1)
         ret.update(ret_p2)
+    # punishment version 1 -----------------------------------------------------
+#     if run_id==0:
+#         ret['P1_Emin'] = 0;ret['P2_Emin'] = 0
+#         ret['nDays_P1'] = 0;ret['nDays_P2'] = 0
+#         ret['p1_punishment'] = 0;ret['p2_punishment'] = 0
+#     else:
+#         ret['nDays_P1'] = ret.apply(lambda row: 1 + sim.res[run_id-1].pax_exp['nDays_P1'][row.name] if row['platform_id'] == 1 else sim.res[run_id-1].pax_exp['nDays_P1'][row.name], axis=1)
+#         ret['nDays_P2'] = ret.apply(lambda row: 1 + sim.res[run_id-1].pax_exp['nDays_P2'][row.name] if row['platform_id'] == 2 else sim.res[run_id-1].pax_exp['nDays_P2'][row.name], axis=1)
+#         ret['P1_Emin'] = ret.apply(lambda row: 1 + sim.res[run_id-1].pax_exp['P1_Emin'][row.name] if (row['platform_id'] == 1 and row['P1_EXPERIENCE_U'] == 1e-2) else sim.res[run_id-1].pax_exp['P1_Emin'][row.name], axis=1)
+#         ret['P2_Emin'] = ret.apply(lambda row: 1 + sim.res[run_id-1].pax_exp['P2_Emin'][row.name] if (row['platform_id'] == 2 and row['P2_EXPERIENCE_U'] == 1e-2) else sim.res[run_id-1].pax_exp['P2_Emin'][row.name], axis=1)
+
+#         ret['p1_punishment'] = ret['P1_Emin']/ret['nDays_P1']
+#         ret['p2_punishment'] = ret['P2_Emin']/ret['nDays_P2']
+#     ret.fillna(0, inplace=True)  
     
+    # punishment version 2 -------------------------------------------------------    
+    if run_id==0:
+        ret['P1_hate'] = 0; ret['P2_hate'] = 0
+    else:
+        ret['P1_hate'] = ret.apply(lambda row: determine_p1_hate(row, run_id, sim.res[run_id-1].pax_exp), axis=1)
+        ret['P2_hate'] = ret.apply(lambda row: determine_p2_hate(row, run_id, sim.res[run_id-1].pax_exp), axis=1)          
+    ret.fillna(0, inplace=True)
     #--------------------------------------------------------
     """ Utility gained through marketing"""
     # P1-------------------------------
@@ -455,17 +536,45 @@ def d2d_kpi_pax(*args,**kwargs):
             ret['P2_INFORMED'].loc[p1] = True
             ret['P2_INFORMED'].loc[p2] = True
     
+    # Platform ---------------------------------------------------------
+    initial_capital = params.initial_capital
+    expense_per_day = params.expense_per_day
+    df_plat = pd.DataFrame(columns=['platform_id', 'P_revenue', 'P_daily_profit']).set_index('platform_id')
+    df_plat.at[1, 'P_revenue'] = ret[ret.platform_id==1].plat_revenue.sum()
+    df_plat.at[2, 'P_revenue'] = ret[ret.platform_id==2].plat_revenue.sum() 
+    df_plat['P_daily_profit'] = df_plat.P_revenue-expense_per_day
+    df_plat['P_remaining_capital'] = initial_capital+df_plat.P_daily_profit if run_id == 0 else sim.res[run_id-1].platforms.P_remaining_capital+df_plat.P_daily_profit
+    
     # ===================================================================================== #
-
+    # 'P1_Emin', 'P2_Emin', 'nDays_P1', 'nDays_P2', 'p1_punishment', 'p2_punishment', 
     ret = ret[['P_U','PT_U','ACTUAL_WT', 'U_dif','OUT','mu', 'wu','nDAYS_HAILED', 'nDAYS_TRY','P1_EXPERIENCE_U',
                'P2_EXPERIENCE_U','P1_MARKETING_U','P2_MARKETING_U','P1_WOM_U','P2_WOM_U',
-               'P1_INFORMED', 'P2_INFORMED', 'platform_id', 'plat_revenue','MATCHING_T'] + [_.name for _ in travellerEvent]]
+               'P1_INFORMED', 'P2_INFORMED', 'platform_id','plat_revenue','MATCHING_T','P1_hate', 'P2_hate'] + [_.name for _ in travellerEvent]]
     ret.index.name = 'pax'
 
     kpi = ret.agg(['sum', 'mean', 'std'])
     kpi['nP'] = ret.shape[0]
-    return {'pax_exp': ret, 'pax_kpi': kpi}
+    return {'pax_exp': ret, 'pax_kpi': kpi, 'platforms':df_plat}
 
+
+def determine_p1_hate(row, run_id, exp):
+    if row['platform_id'] == 1:
+        if row['P1_EXPERIENCE_U'] == 1e-2:
+            return 1 + exp['P1_hate'][row.name]
+        else:
+            return 0
+    else:
+        return exp['P1_hate'][row.name]
+
+def determine_p2_hate(row, run_id, exp):
+    if row['platform_id'] == 2:
+        if row['P2_EXPERIENCE_U'] == 1e-2:
+            return 1 + exp['P2_hate'][row.name]
+        else:
+            return 0
+    else:
+        return exp['P2_hate'][row.name]
+    
 
 def P_U_func(row, sim, unfulfilled_requests, ret):
 
@@ -479,7 +588,7 @@ def P_U_func(row, sim, unfulfilled_requests, ret):
         disc = plat.discount #####
     
     if row.name in unfulfilled_requests:
-        hate = 1
+        hate = 0
     else:
         hate = 0
 
@@ -523,7 +632,37 @@ def my_function(veh, **kwargs): # user defined function to represent agent decis
         return True
     else:
         return False
+
     
+    # punishment version 1 ------------------------------------------------------------------------
+#     p1_p = sim.res[run_id-1].veh_exp.p1_punishment.loc[veh.id] if run_id > 0 else 0
+#     p2_p = sim.res[run_id-1].veh_exp.p2_punishment.loc[veh.id] if run_id > 0 else 0
+#     p1_nh = sim.res[run_id-1].veh_exp.nDays_P1.loc[veh.id] if run_id > 0 else 0
+#     p2_nh = sim.res[run_id-1].veh_exp.nDays_P2.loc[veh.id] if run_id > 0 else 0
+    
+#     g = 0.6
+#     if p1_informed and p1_nh>3:
+#         if random.uniform(0,1) > g + (1-p1_p)*(1-g): p1_informed = False
+#         else: p1_informed = True
+        
+#     if p2_informed and p2_nh>3:
+#         if random.uniform(0,1) > g + (1-p2_p)*(1-g): p2_informed = False
+#         else: p2_informed = True 
+
+    # punishment version 1  -------------------------------------------------------------------------
+#     p1_p = sim.res[run_id-1].pax_exp.p1_punishment.loc[pax.id] if run_id > 0 else 0
+#     p2_p = sim.res[run_id-1].pax_exp.p2_punishment.loc[pax.id] if run_id > 0 else 0
+#     p1_nh = sim.res[run_id-1].pax_exp.nDays_P1.loc[pax.id] if run_id > 0 else 0
+#     p2_nh = sim.res[run_id-1].pax_exp.nDays_P2.loc[pax.id] if run_id > 0 else 0
+    
+#     g = 0.6
+#     if p1_informed and p1_nh>3:
+#         if random.uniform(0,1) > g + (1-p1_p)*(1-g): p1_informed = False
+#         else: p1_informed = True
+        
+#     if p2_informed and p2_nh>3:
+#         if random.uniform(0,1) > g + (1-p2_p)*(1-g): p2_informed = False
+#         else: p2_informed = True 
     
     
     

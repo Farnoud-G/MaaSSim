@@ -47,7 +47,7 @@ class VehicleAgent(object):
             self.veh.pos = self.sim.vehicle_fixed_positions.loc[self.id] #f#
         self.platform_id = self.veh.platform  # id of a platform
         self.platform = self.sim.plats[self.platform_id]  # reference to the platform
-
+        
         # local variables
         self.paxes = list()
         self.schedule = None  # schedule served by vehicle (single request for case of non-shared rides)
