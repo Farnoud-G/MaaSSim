@@ -180,6 +180,16 @@ class PassengerAgent(object):
             platform.updateQs()
             # platform.resource.release(self.reqs[platform_id])
             # self.reqs[platform_id].cancel()
+            
+    def leave_queues(self):
+        self.update(event=travellerEvent.LOSES_PATIENCE)
+        for platform_id in self.platform_ids:
+            platform = self.sim.plats[platform_id]
+            if self.request.name in platform.reqQ:
+                platform.reqQ.pop(platform.reqQ.index(self.request.name))
+            platform.updateQs()
+            # platform.resource.release(self.reqs[platform_id])
+            # self.reqs[platform_id].cancel()
 
     def pax_action(self):
         """main routine of the passenger process,

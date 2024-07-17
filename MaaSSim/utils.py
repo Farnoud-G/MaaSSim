@@ -130,21 +130,9 @@ def download_G(inData, _params, make_skims=True):
 def save_G(inData, _params, path=None):
     # saves graph and skims to files
     ox.save_graphml(inData.G, filepath=_params.paths.G)
-    inData.skim.to_csv(_params.paths.skim, chunksize=20000000)
+    inData.skim.to_csv(_params.paths.skim, chunksize=20000000) 
 
-    
-def generate_platforms(_inData, _params, nPM): #f#
-    plats = list()
-    for i in range(nPM + 1):
-        plats.append(empty_series(_inData.platforms, name=i))
-    plats = pd.concat(plats, axis=1, keys=range(1, nPM + 1)).T
-    plats.fare = _params.platforms.fare
-    plats['base_fare'] = _params.platforms.base_fare
-    plats['min_fare'] = _params.platforms.min_fare
-    return plats    
-
-
-def generate_vehicles(_inData, _params, nV):
+def generate_vehicles(_inData, nV):
     """
     generates single vehicle (database row with structure defined in DataStructures)
     index is consecutive number if dataframe
@@ -157,12 +145,10 @@ def generate_vehicles(_inData, _params, nV):
 
     vehs = pd.concat(vehs, axis=1, keys=range(1, nV + 1)).T
     vehs.event = driverEvent.STARTS_DAY
-    vehs.platform = 1 #f#
+    vehs.platform = 0
     vehs.shift_start = 0
     vehs.shift_end = 60 * 60 * 24
     vehs.pos = vehs.pos.apply(lambda x: int(rand_node(_inData.nodes)))
-    vehs['mu'] = 0 #f#
-    vehs['res_wage'] = np.random.normal(_params.d2d.res_wage, _params.d2d.res_wage_eps, nV) #f#
 
     return vehs
 
@@ -232,8 +218,7 @@ def generate_demand(_inData, _params=None, avg_speed=False):
 
     _inData.requests = requests
     _inData.passengers.pos = _inData.requests.origin
-
-    _inData.passengers.platforms = _inData.passengers.platforms.apply(lambda x: [1]) #f#
+    _inData.passengers.platforms = _inData.passengers.platforms.apply(lambda x: [0])
 
     return _inData
 
