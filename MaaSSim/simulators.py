@@ -271,8 +271,8 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
         p2_i = np.random.randint(0, max_i+1)
         
     else: 
-        p1_i = fares.index(1.0)
-        p2_i = fares.index(1.0)
+        p1_i = fares.index(1.4)
+        p2_i = fares.index(1.6)
     
     turn_count = 0
     turnover_interval = params.turnover_interval
@@ -290,7 +290,7 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
     sim.platforms.daily_marketing[1] = True
     sim.platforms.daily_marketing[2] = True
     
-    sim.competition_trajectory = [(sim.platforms.fare[2], sim.platforms.fare[1])]
+    # sim.competition_trajectory = [(sim.platforms.fare[2], sim.platforms.fare[1])]
     
     for day in range(params.get('nD', 1)):
 
@@ -470,8 +470,9 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
             turn_count += 1
             sim.competition_trajectory.append((sim.platforms.fare[2], sim.platforms.fare[1]))
             day = day+turnover_interval
-            # if input('Say stop if you want to break: ')=='stop':
-            #     break
+            if  day==499:
+                if input('Say stop if you want to break: ')=='stop':
+                    break
             
 #-------------------------------------------------------------------------------------------
         if sim.functions.f_stop_crit(sim=sim):
