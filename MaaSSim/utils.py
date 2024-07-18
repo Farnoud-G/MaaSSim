@@ -114,7 +114,7 @@ def load_G(_inData, _params=None, stats=True, set_t=True):
 
 def download_G(inData, _params, make_skims=True):
     # uses osmnx to download the graph
-    print('Downloading network for {} witn osmnx'.format(_params.city))
+    print('Downloading network for {} with osmnx'.format(_params.city))
     inData.G = ox.graph_from_place(_params.city, network_type='drive')
     inData.nodes = pd.DataFrame.from_dict(dict(inData.G.nodes(data=True)), orient='index')
     if make_skims:
