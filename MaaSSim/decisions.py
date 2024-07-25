@@ -275,7 +275,9 @@ def f_match(**kwargs):
                         surge_mp = 5
                     else:
                         # surge_fee = math.ceil((3/(max_ds-1))*ds - (3/(max_ds-1)))
-                        surge_mp = round((4/(max_ds-1))*ds + ((max_ds-5)/(max_ds-1)), 1)
+                        surge_mp = (4/(max_ds-1))*ds + ((max_ds-5)/(max_ds-1)) #linear
+                        # surge_mp = 5 - (4 / (1 - max_ds)**2) * (ds - max_ds)**2 # concave quadratic
+                        surge_mp = round(surge_mp, 1)
                         # print('surge_mp----', surge_mp, 'max_ds= ', max_ds, ' ds= ', ds)
                 else:
                     surge_mp = 1; ds = '-'; h3_add = '-'
