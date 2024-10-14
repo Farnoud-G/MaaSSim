@@ -183,8 +183,6 @@ def generate_vehicles(_inData, _params, nV):
 
 
 def generate_demand(_inData, _params=None, avg_speed=False):
-    # generates nP requests with a given temporal and spatial distribution of origins and destinations
-    # returns _inData with dataframes requests and passengers populated.
 
     try:
         _params.t0 = pd.to_datetime(_params.t0)
@@ -192,67 +190,73 @@ def generate_demand(_inData, _params=None, avg_speed=False):
         pass
 
     min_dist = _params.get('dist_threshold_min',0)
+    max_dist = _params.get('dist_threshold',0)
     
-    df = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
-    df.status = travellerEvent.STARTS_DAY
-    df.pos = _inData.nodes.sample(_params.nP).index  # df.pos = df.apply(lambda x: rand_node(_inData.nodes), axis=1)
-    if _params.d2d.heterogeneous: #f#
-        df['exp_utility_eps'] = np.random.gumbel(0, _params.d2d.exp_utility_eps, _params.nP)  #f#
-    df['learning'] = 'on' #f#
-    df['rh_U'] = _params.d2d.ini_att #f#
-    _inData.passengers = df
-    requests = pd.DataFrame(index=df.index, columns=_inData.requests.columns)
+    _inData.passengers = pd.DataFrame(index=np.arange(0, _params.nP), columns=_inData.passengers.columns)
+    _inData.passengers['P1_U'] = _params.d2d.ini_att
+    _inData.passengers['P2_U'] = _params.d2d.ini_att
+    requests = pd.DataFrame(index=_inData.passengers.index, columns=_inData.requests.columns)
+    requests.pax_id = _inData.passengers.index
+    requests.ride_id = _inData.passengers.index
+    
+    # populate origin, destination, and treq-----------------------------------------------------------------------
     distances = _inData.skim[_inData.stats['center']].to_frame().dropna()  # compute distances from center
     distances.columns = ['distance']
-    distances = distances[distances['distance'] < _params.dist_threshold]
-    # apply negative exponential distributions
-    distances['p_origin'] = distances['distance'].apply(lambda x:
-                                                        math.exp(
-                                                            _params.demand_structure.origins_dispertion * x))
-
-    distances['p_destination'] = distances['distance'].apply(
-        lambda x: math.exp(_params.demand_structure.destinations_dispertion * x))
+    distances = distances[distances['distance'] < max_dist]
+    distances['p_origin'] = distances['distance'].apply(lambda x:math.exp(_params.demand_structure.origins_dispertion * x))
+    distances['p_destination'] = distances['distance'].apply(lambda x:math.exp(_params.demand_structure.destinations_dispertion * x))
+    
     if _params.demand_structure.temporal_distribution == 'uniform':
-        treq = np.random.uniform(-_params.simTime * 60 * 60 / 2, _params.simTime * 60 * 60 / 2,
-                                 _params.nP)  # apply uniform distribution on request times
+        treq = np.random.uniform(-_params.simTime * 60 * 60 / 2, _params.simTime * 60 * 60 / 2, _params.nP)
+        
     elif _params.demand_structure.temporal_distribution == 'normal':
-        treq = np.random.normal(_params.simTime * 60 * 60 / 2,
-                                _params.demand_structure.temporal_dispertion * _params.simTime * 60 * 60 / 2,
-                                _params.nP)  # apply normal distribution on request times
+        treq = np.random.normal(_params.simTime * 60 * 60 / 2, _params.demand_structure.temporal_dispertion * _params.simTime * 60 * 60 / 2,_params.nP)
+    
     else:
         treq = None
+    
     requests.treq = [_params.t0 + pd.Timedelta(int(_), 's') for _ in treq]
-    requests.origin = list(
-        distances.sample(_params.nP, weights='p_origin', replace=True).index)  # sample origin nodes from a distribution
-    requests.destination = list(distances.sample(_params.nP, weights='p_destination',
-                                                 replace=True).index)  # sample destination nodes from a distribution
-
+    requests.origin = list(distances.sample(_params.nP, weights='p_origin', replace=True).index)
+    requests.destination = list(distances.sample(_params.nP, weights='p_destination', replace=True).index)
     requests['dist'] = requests.apply(lambda request: _inData.skim.loc[request.origin, request.destination], axis=1)
-    while len(requests[requests.dist >= _params.dist_threshold]) + len(requests[requests.dist < min_dist]) > 0:
+    
+    while len(requests[requests.dist >= max_dist]) + len(requests[requests.dist < min_dist]) > 0:
         requests.origin = requests.apply(lambda request: (distances.sample(1, weights='p_origin').index[0]
-                                                          if request.dist >= _params.dist_threshold or request.dist < min_dist else
+                                                          if request.dist >= max_dist or request.dist < min_dist else
                                                           request.origin),
                                          axis=1)
         requests.destination = requests.apply(lambda request: (distances.sample(1, weights='p_destination').index[0]
-                                                               if request.dist >= _params.dist_threshold or request.dist < min_dist else
+                                                               if request.dist >= max_dist or request.dist < min_dist else
                                                                request.destination),
                                               axis=1)
         requests.dist = requests.apply(lambda request: _inData.skim.loc[request.origin, request.destination], axis=1)
 
-    requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist, 's').floor('s'), axis=1)
-    # requests.ttrav = pd.to_timedelta(requests.ttrav)
-    if avg_speed:
-        requests.ttrav = (pd.to_timedelta(requests.ttrav) / _params.speeds.ride).dt.floor('1s')
+    requests['ttrav'] = requests.apply(lambda request: pd.Timedelta(request.dist/_params.speeds.ride, 's').floor('s'), axis=1)
+    
+    # u_PT-----------------------------------------------------------------------  
+    walk_factor = 2
+    wait_factor = 2
+    transfer_penalty = 500
+    walkDistance = 216 # meters
+    waitingTime = 180 # seconds
+    requests['transitTime'] = requests['dist']/_params.PT_avg_speed
+    requests['transfers'] = requests.apply(lambda row: 1 if row.dist>5000 else 0, axis=1)
+    requests['PT_fare'] = 1 + requests.dist/1000 * 0.175
+    requests['u_PT'] = -(requests['PT_fare'] + \
+                       (_params.VoT/3600) * (walk_factor * walkDistance / _params.speeds.walk +
+                                       wait_factor * waitingTime +
+                                       transfer_penalty * requests.transfers + requests.transitTime))
+        # ---------------------------------------------------------------------------
+    
     requests.tarr = [request.treq + request.ttrav for _, request in requests.iterrows()]
     requests = requests.sort_values('treq')
-    requests.index = df.index
-    requests.pax_id = df.index
     requests.shareable = False
-
     _inData.requests = requests
-    _inData.passengers.pos = _inData.requests.origin
-
-    _inData.passengers.platforms = _inData.passengers.platforms.apply(lambda x: [1]) #f#
+    
+    _inData.passengers['pax_id'] = _inData.passengers.index.copy()
+    _inData.passengers.pos = _inData.requests.origin.copy()
+    _inData.passengers['u_PT'] = _inData.requests.u_PT.copy()
+    _inData.passengers.platform = 1
 
     return _inData
 
