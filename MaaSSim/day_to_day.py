@@ -21,7 +21,8 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
     nPM = 0
 
     # P1 utilization-------------------------------------------------------------------
-    p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_INFORMED.loc[veh.id]
+    # p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_INFORMED.loc[veh.id]
+    p1_informed = True
     if p1_informed==True:
         
         P1_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_EXPERIENCE_U.loc[veh.id]
@@ -34,7 +35,8 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         veh.veh.P1_U = P1_U
     
     #P2 utilization---------------------------------------------------------------------
-    p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_INFORMED.loc[veh.id]
+    # p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_INFORMED.loc[veh.id]
+    p2_informed = True
     if p2_informed==True:
 
         P2_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_EXPERIENCE_U.loc[veh.id]
@@ -96,7 +98,8 @@ def S_traveller_opt_out(pax, **kwargs):
     nPM = 0
     
     #P1 utilization---------------------------------------------------------------------
-    p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_INFORMED.loc[pax.id]
+    # p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_INFORMED.loc[pax.id]
+    p1_informed = True
     if p1_informed==True:
         
         P1_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_EXPERIENCE_U.loc[pax.id]    
@@ -109,7 +112,8 @@ def S_traveller_opt_out(pax, **kwargs):
         pax.pax.P1_U = P1_U
         
     #P2 utilization---------------------------------------------------------------------
-    p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_INFORMED.loc[pax.id]
+    # p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_INFORMED.loc[pax.id]
+    p2_informed = True
     if p2_informed==True:
         
         P2_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_EXPERIENCE_U.loc[pax.id]    
@@ -198,7 +202,6 @@ def d2d_kpi_veh(*args,**kwargs):
     d = df[df['event_s']=='ARRIVES_AT_DROPOFF']
     if len(d) != 0:
         d['TRIP_FARE'] = d.apply(lambda row: max(row['dt'] * (params.speeds.ride/1000) * platforms.loc[sim.vehs[row.veh].platform_id].fare + platforms.loc[sim.vehs[row.veh].platform_id].base_fare, platforms.loc[sim.vehs[row.veh].platform_id].min_fare), axis=1)
-
         ret['TRIP_FARE'] = d.groupby(['veh']).sum().TRIP_FARE
     else:
         ret['TRIP_FARE'] = 0
@@ -216,10 +219,9 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['ACTUAL_INC'] = ret.PROFIT    
     
     #====================================================================
-    # Rafal & Farnoud (2022)
-    
     ret['P1_INFORMED'] = False if run_id == 0 else sim.res[run_id-1].veh_exp.P1_INFORMED
     ret['P2_INFORMED'] = False if run_id == 0 else sim.res[run_id-1].veh_exp.P2_INFORMED
+    
     #-------------------------------------------------------
     """ Utility gained through experience"""
 
@@ -330,6 +332,7 @@ def d2d_kpi_pax(*args,**kwargs):
     sim = kwargs.get('sim', None)
     params = sim.params
     run_id = kwargs.get('run_id', None)
+    retV = kwargs.get('retV', None)
     simrun = sim.runs[run_id]
     platforms = sim.platforms
     paxindex = sim.inData.passengers.index
@@ -355,14 +358,18 @@ def d2d_kpi_pax(*args,**kwargs):
             ret[status.name] = 0  # cover all statuses
     PREFERS_OTHER_SERVICE.index = PREFERS_OTHER_SERVICE.values
     ret['OUT'] = PREFERS_OTHER_SERVICE
-    ret['OUT'] = ~ret['OUT'].isnull()   
-    ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
+    ret['OUT'] = ~ret['OUT'].isnull() 
+    
+    ret['fulfilled'] = ret.apply(lambda row: True if row['ARRIVES_AT_DROPOFF']>0 else False, axis=1)
+    ret['mu'] = ret.apply(lambda row: 1 if row['fulfilled'] == True else 0, axis=1)
+    ret['wu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
     ret['nDAYS_HAILED'] = ret['mu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_HAILED + ret['mu']
+    ret['nDAYS_TRY'] = ret['wu'] if run_id == 0 else sim.res[run_id-1].pax_exp.nDAYS_TRY + ret['wu']
     ret['TRAVEL'] = ret['ARRIVES_AT_DROPOFF']  # time with traveller (paid time)
     ret['ACTUAL_WT'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['MATCHING_T'] = (ret['RECEIVES_OFFER'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['OPERATIONS'] = ret['ACCEPTS_OFFER'] + ret['DEPARTS_FROM_PICKUP'] + ret['SETS_OFF_FOR_DEST']
-    ret['platform_id'] = ret.apply(lambda row: sim.pax[row.name].platform_id if row.OUT==False else 0, axis=1) # zero means PT
+    ret['platform_id'] = ret.apply(lambda row: sim.pax[row.name].platform_id if row.OUT==False else 0, axis=1) # zero means pt    
     ret.fillna(0, inplace=True)
     
     #====================================================================
@@ -454,16 +461,33 @@ def d2d_kpi_pax(*args,**kwargs):
             ret['P2_INFORMED'].loc[p1] = True
             ret['P2_INFORMED'].loc[p2] = True
     
+    
+    # Platform ---------------------------------------------------------
+    initial_capital = params.initial_capital
+    expense_per_day = params.expense_per_day
+    df_plat = pd.DataFrame(columns=['platform_id', 'fare', 'revenue', 'profit', 'nP', 'nV']).set_index('platform_id')
+    df_plat.at[1, 'revenue'] = ret[ret.platform_id==1].plat_revenue.sum()
+    df_plat.at[2, 'revenue'] = ret[ret.platform_id==2].plat_revenue.sum() 
+    df_plat['profit'] = df_plat.revenue-expense_per_day
+    df_plat['remaining_capital'] = initial_capital+df_plat.profit if run_id == 0 else sim.res[run_id-1].plat_exp.remaining_capital+df_plat.profit
+    
+    df_plat.at[1, 'nP'] = len(ret[ret.platform_id==1])
+    df_plat.at[2, 'nP'] = len(ret[ret.platform_id==2])
+    df_plat.at[1, 'nV'] = len(retV[retV.platform_id==1])
+    df_plat.at[2, 'nV'] = len(retV[retV.platform_id==2])
+    df_plat['market_share'] = ((df_plat.nP/params.nP)+(df_plat.nV/params.nV))/2
+    df_plat.at[1, 'fare'] = sim.platforms.fare[1]
+    df_plat.at[2, 'fare'] = sim.platforms.fare[2]
     # ===================================================================================== #
 
-    ret = ret[['P_U','PT_U','ACTUAL_WT', 'U_dif','OUT','mu','nDAYS_HAILED','P1_EXPERIENCE_U',
+    ret = ret[['P_U','PT_U','ACTUAL_WT', 'U_dif','OUT','mu','wu','nDAYS_HAILED','nDAYS_TRY','P1_EXPERIENCE_U',
                'P2_EXPERIENCE_U','P1_MARKETING_U','P2_MARKETING_U','P1_WOM_U','P2_WOM_U',
                'P1_INFORMED', 'P2_INFORMED', 'platform_id', 'plat_revenue','MATCHING_T'] + [_.name for _ in travellerEvent]]
+    
     ret.index.name = 'pax'
-
     kpi = ret.agg(['sum', 'mean', 'std'])
     kpi['nP'] = ret.shape[0]
-    return {'pax_exp': ret, 'pax_kpi': kpi}
+    return {'pax_exp': ret, 'pax_kpi': kpi, 'plat_exp':df_plat}
 
 
 def P_U_func(row, sim, unfulfilled_requests, ret):
@@ -478,7 +502,7 @@ def P_U_func(row, sim, unfulfilled_requests, ret):
         disc = plat.discount #####
     
     if row.name in unfulfilled_requests:
-        hate = 1
+        hate = 3
     else:
         hate = 0
 

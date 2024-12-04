@@ -13,6 +13,7 @@ import pandas as pd
 from scipy.optimize import brute
 import logging
 import re
+import random
 
 
 def single_pararun(one_slice, *args):
@@ -224,6 +225,109 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         if sim.functions.f_stop_crit(sim=sim):
             break
     return sim
+
+
+def sim_com(config="data/config.json", inData=None, params=None, **kwargs):
+
+    if inData is None:  # otherwise we use what is passed
+        from MaaSSim.data_structures import structures
+        inData = structures.copy()  # fresh data
+    if params is None:
+        params = get_config(config, root_path = kwargs.get('root_path'))  # load from .json file
+    if kwargs.get('make_main_path',False):
+        from MaaSSim.utils import make_config_paths
+        params = make_config_paths(params, main = kwargs.get('make_main_path',False), rel = True)
+
+    if params.paths.get('vehicles', False):
+        inData = read_vehicle_positions(inData, path=params.paths.vehicles)
+
+    if len(inData.G) == 0:  # only if no graph in input
+        inData = load_G(inData, params, stats=True)  # download graph for the 'params.city' and calc the skim matrices
+        
+    if params.paths.get('requests', False):
+        inData = read_requests_csv(inData, params, path=params.paths.requests)
+        
+    if len(inData.passengers) == 0:  # only if no passengers in input
+        inData = generate_demand(inData, params, avg_speed=True)
+    if len(inData.vehicles) == 0:  # only if no vehicles in input
+        inData.vehicles = generate_vehicles(inData, params, params.nV)
+    if len(inData.platforms) == 0:  # only if no platforms in input
+        inData.platforms = generate_platforms(inData, params, params.get('nPM', 1))
+
+    inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
+    sim = Simulator(inData, params=params, **kwargs)  # initialize
+    
+    # Initialization ------------------------------------------------------
+    interval = 1000
+    step = 0.2 # euro/km
+    threshold_u = 0.01
+    max_revenue = 2865 # maximum revenue with the initial fare
+    
+    sim.platforms.fare[1] = 1.2
+    sim.platforms.fare[2] = 1.2
+    # Initialization ------------------------------------------------------
+
+    for day in range(params.get('nD', 1)):  # run iterations
+        
+        # Other levers -----------------------------------------------------
+        sim.platforms.comm_rate[1] = 0.20
+        sim.platforms.comm_rate[2] = 0.20
+
+        sim.platforms.discount[1] = 0.0
+        sim.platforms.discount[2] = 0.0
+        
+        # No marketing due to the created noise into competition
+        sim.platforms.daily_marketing[1] = False
+        sim.platforms.daily_marketing[2] = False
+
+        #--------------------------------------------------------------------
+        
+        sim.make_and_run(run_id=day)  # prepare and SIM
+        sim.output()  # calc results
+                
+        print('Day = ', day, ' -------------------------------------------')
+        df = sim.res[day].pax_exp; fd = sim.res[day].veh_exp
+        np1 = len(df[df.platform_id==1]); vp1 = len(fd[fd.platform_id==1])
+        np2 = len(df[df.platform_id==2]); vp2 = len(fd[fd.platform_id==2])
+        print('np1 = ', np1, '  np2 = ', np2); print('vp1 = ', vp1, '  vp2 = ', vp2)
+        
+        # Far adjustment for inter-platform competition -----------------------
+        if (day+1)%interval==0 and day!=0:
+                        
+            for p in range(1, params.nPM+1):
+                # utility calculation for the last move
+                revenue = sum(sim.res[i].plat_exp.revenue[p] for i in range(day+1-interval,day+1)) / interval
+                market_share = sum(sim.res[i].plat_exp.market_share[p] for i in range(day+1-interval,day+1)) / interval
+                utility = params.alpha*(revenue/max_revenue) + (1-params.alpha)*market_share # revenue and market share are normalized to 0-1
+                sim.trajectory['P{}'.format(p)].append((sim.platforms.fare[p], utility))
+                
+                # Reactive decision making: utility evaluation of last adjustment to determine the next step
+                if len(sim.trajectory['P{}'.format(p)])<2:
+                    sim.platforms.fare[p] += random.choice([-step, 0, step])
+                    # sim.platforms.fare[p] += step
+                else:
+                    delta_f = sim.trajectory['P{}'.format(p)][-1][0] - sim.trajectory['P{}'.format(p)][-2][0]
+                    delta_u = sim.trajectory['P{}'.format(p)][-1][1] - sim.trajectory['P{}'.format(p)][-2][1]
+                    # delta_u of apponent might be consdired as well.
+                    
+                    if abs(delta_u) > threshold_u:
+                        if delta_f != 0:
+                            uf = delta_u/delta_f
+                            if uf>0: # direct relationship between utility and fare
+                                sim.platforms.fare[p] += step
+                            else:    # inverse relationship
+                                sim.platforms.fare[p] -= step
+                        else:
+                            sim.platforms.fare[p] += random.choice([-step, 0, step])
+                    else:
+                        pass # do not change the fare
+            
+            # Far adjustment for inter-platform competition -----------------------
+            
+        if sim.functions.f_stop_crit(sim=sim):
+            break
+    return sim
+
 
 
 if __name__ == "__main__":

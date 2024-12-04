@@ -90,7 +90,9 @@ class Simulator:
                                     self.t0, self.params.nV, self.params.nP,
                                     self.params.city))
         self.driver_p = []         
-        self.traveller_p = [] 
+        self.traveller_p = []
+        
+        self.trajectory = {'P1':[], 'P2':[]}
         
         # self.income = DotMap() #f#
         # self.income.expected = pd.DataFrame({'veh_id': list(range(1,self.params.nV+1))}).set_index('veh_id') #f#
@@ -182,8 +184,8 @@ class Simulator:
     def output(self, run_id=None):
         # called after the run for refined results
         run_id = self.run_ids[-1] if run_id is None else run_id
-        ret = self.functions.kpi_pax(sim = self, run_id = run_id)
         veh = self.functions.kpi_veh(sim = self, run_id = run_id)
+        ret = self.functions.kpi_pax(sim = self, run_id = run_id, retV = veh['veh_exp'])
         ret.update(veh)
         self.res[run_id] = DotMap(ret)
 
