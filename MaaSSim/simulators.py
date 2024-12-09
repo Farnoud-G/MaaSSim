@@ -258,13 +258,16 @@ def sim_com(config="data/config.json", inData=None, params=None, **kwargs):
     sim = Simulator(inData, params=params, **kwargs)  # initialize
     
     # Initialization ------------------------------------------------------
-    interval = 1000
+    interval = 50
     step = 0.2 # euro/km
-    threshold_u = 0.01
+    threshold_u = 0.005
     max_revenue = 2865 # maximum revenue with the initial fare
+    alpha = 0.6
+    min_fare = 0.0
+    max_fare = 3.0
     
-    sim.platforms.fare[1] = 1.2
-    sim.platforms.fare[2] = 1.2
+    sim.platforms.fare[1] = 1.0
+    sim.platforms.fare[2] = 1.0
     # Initialization ------------------------------------------------------
 
     for day in range(params.get('nD', 1)):  # run iterations
@@ -296,10 +299,13 @@ def sim_com(config="data/config.json", inData=None, params=None, **kwargs):
                         
             for p in range(1, params.nPM+1):
                 # utility calculation for the last move
+                capital = sum(sim.res[i].plat_exp.remaining_capital[p] for i in range(day+1-interval,day+1)) / interval
                 revenue = sum(sim.res[i].plat_exp.revenue[p] for i in range(day+1-interval,day+1)) / interval
+                P_market_share = sum(sim.res[i].plat_exp.P_market_share[p] for i in range(day+1-interval,day+1)) / interval
+                V_market_share = sum(sim.res[i].plat_exp.V_market_share[p] for i in range(day+1-interval,day+1)) / interval
                 market_share = sum(sim.res[i].plat_exp.market_share[p] for i in range(day+1-interval,day+1)) / interval
-                utility = params.alpha*(revenue/max_revenue) + (1-params.alpha)*market_share # revenue and market share are normalized to 0-1
-                sim.trajectory['P{}'.format(p)].append((sim.platforms.fare[p], utility))
+                utility = alpha*(revenue/max_revenue) + (1-alpha)*market_share # revenue and market share are normalized to 0-1
+                sim.trajectory['P{}'.format(p)].append((sim.platforms.fare[p], utility, revenue, market_share))
                 
                 # Reactive decision making: utility evaluation of last adjustment to determine the next step
                 if len(sim.trajectory['P{}'.format(p)])<2:
@@ -317,11 +323,26 @@ def sim_com(config="data/config.json", inData=None, params=None, **kwargs):
                                 sim.platforms.fare[p] += step
                             else:    # inverse relationship
                                 sim.platforms.fare[p] -= step
-                        else:
-                            sim.platforms.fare[p] += random.choice([-step, 0, step])
+                        else:        # no relation due to delta_f = 0
+                            if delta_u > 0:
+                                pass
+                            else:
+                                sim.platforms.fare[p] += random.choice([-step, 0, step])
                     else:
-                        pass # do not change the fare
-            
+                        if P_market_share > 0.1:
+                            sim.platforms.fare[p] += random.choice([0, step])
+                        else:
+                            sim.platforms.fare[p] += random.choice([0, -step])
+                
+                # pass # do not change the fare
+                
+                sim.platforms.fare[p] = min(max(sim.platforms.fare[p], min_fare), max_fare)
+
+                print('-------------------------------------------------------')
+                print('P{} trajectory: '.format(p), sim.trajectory['P{}'.format(p)][-1])  
+                print('-------------------------------------------------------')
+                print('New P{} fare: '.format(p), sim.platforms.fare[p])
+                print('-------------------------------------------------------')
             # Far adjustment for inter-platform competition -----------------------
             
         if sim.functions.f_stop_crit(sim=sim):

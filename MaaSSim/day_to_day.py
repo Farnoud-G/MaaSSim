@@ -97,9 +97,14 @@ def S_traveller_opt_out(pax, **kwargs):
     alts_p = {'PT': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
     nPM = 0
     
+    P1_hate = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_hate.loc[pax.id]
+    P2_hate = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_hate.loc[pax.id]
+    
+    p1_informed = P1_hate <= 0
+    p2_informed = P2_hate <= 0
+    
     #P1 utilization---------------------------------------------------------------------
     # p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_INFORMED.loc[pax.id]
-    p1_informed = True
     if p1_informed==True:
         
         P1_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_EXPERIENCE_U.loc[pax.id]    
@@ -113,7 +118,6 @@ def S_traveller_opt_out(pax, **kwargs):
         
     #P2 utilization---------------------------------------------------------------------
     # p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_INFORMED.loc[pax.id]
-    p2_informed = True
     if p2_informed==True:
         
         P2_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_EXPERIENCE_U.loc[pax.id]    
@@ -369,9 +373,7 @@ def d2d_kpi_pax(*args,**kwargs):
     ret['ACTUAL_WT'] = (ret['RECEIVES_OFFER'] + ret['MEETS_DRIVER_AT_PICKUP'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['MATCHING_T'] = (ret['RECEIVES_OFFER'] + ret.get('LOSES_PATIENCE', 0))/60  #in minute
     ret['OPERATIONS'] = ret['ACCEPTS_OFFER'] + ret['DEPARTS_FROM_PICKUP'] + ret['SETS_OFF_FOR_DEST']
-    ret['platform_id'] = ret.apply(lambda row: sim.pax[row.name].platform_id if row.OUT==False else 0, axis=1) # zero means pt    
-    ret.fillna(0, inplace=True)
-    
+    ret['platform_id'] = ret.apply(lambda row: sim.pax[row.name].platform_id if row.OUT==False else 0, axis=1) # zero means pt  
     #====================================================================
     # Rafal & Farnoud (2022)
     
@@ -460,7 +462,17 @@ def d2d_kpi_pax(*args,**kwargs):
         if (ret['P2_INFORMED'].loc[p1] == False and ret['P2_INFORMED'].loc[p2] == True) | (ret['P2_INFORMED'].loc[p2] == False and ret['P2_INFORMED'].loc[p1] == True):
             ret['P2_INFORMED'].loc[p1] = True
             ret['P2_INFORMED'].loc[p2] = True
+
+    # punishment -------------------------------------------------------    
+    if run_id==0:
+        ret['P1_hate'] = 0; ret['P2_hate'] = 0
+    else:
+        ret['P1_hate'] = ret.apply(lambda row: determine_p1_hate(row, run_id, sim.res[run_id-1].pax_exp), axis=1)
+        ret['P2_hate'] = ret.apply(lambda row: determine_p2_hate(row, run_id, sim.res[run_id-1].pax_exp), axis=1)
+
+    # punishment -------------------------------------------------------
     
+    ret.fillna(0, inplace=True)
     
     # Platform ---------------------------------------------------------
     initial_capital = params.initial_capital
@@ -475,14 +487,16 @@ def d2d_kpi_pax(*args,**kwargs):
     df_plat.at[2, 'nP'] = len(ret[ret.platform_id==2])
     df_plat.at[1, 'nV'] = len(retV[retV.platform_id==1])
     df_plat.at[2, 'nV'] = len(retV[retV.platform_id==2])
-    df_plat['market_share'] = ((df_plat.nP/params.nP)+(df_plat.nV/params.nV))/2
+    df_plat['P_market_share'] = df_plat.nP/params.nP
+    df_plat['V_market_share'] = df_plat.nV/params.nV
+    df_plat['market_share'] = (df_plat.P_market_share + df_plat.V_market_share)/2
     df_plat.at[1, 'fare'] = sim.platforms.fare[1]
     df_plat.at[2, 'fare'] = sim.platforms.fare[2]
     # ===================================================================================== #
 
     ret = ret[['P_U','PT_U','ACTUAL_WT', 'U_dif','OUT','mu','wu','nDAYS_HAILED','nDAYS_TRY','P1_EXPERIENCE_U',
                'P2_EXPERIENCE_U','P1_MARKETING_U','P2_MARKETING_U','P1_WOM_U','P2_WOM_U',
-               'P1_INFORMED', 'P2_INFORMED', 'platform_id', 'plat_revenue','MATCHING_T'] + [_.name for _ in travellerEvent]]
+               'P1_INFORMED', 'P2_INFORMED', 'platform_id', 'plat_revenue','MATCHING_T','P1_hate', 'P2_hate'] + [_.name for _ in travellerEvent]]
     
     ret.index.name = 'pax'
     kpi = ret.agg(['sum', 'mean', 'std'])
@@ -538,7 +552,25 @@ def PT_utility(requests,params):
     return requests
 
 
+def determine_p1_hate(row, run_id, exp):
+    hate = 5
+    if row['platform_id'] == 1 and run_id>100:
+        if row['P1_EXPERIENCE_U'] == 1e-2:
+            return hate
+        else:
+            return 0
+    else:
+        return max(exp['P1_hate'][row.name]-1, 0)
 
+def determine_p2_hate(row, run_id, exp):
+    hate = 5
+    if row['platform_id'] == 2 and run_id>100:
+        if row['P2_EXPERIENCE_U'] == 1e-2:
+            return hate
+        else:
+            return 0
+    else:
+        return max(exp['P2_hate'][row.name]-1, 0)
     
 def my_function(veh, **kwargs): # user defined function to represent agent decisions
     sim = veh.sim
