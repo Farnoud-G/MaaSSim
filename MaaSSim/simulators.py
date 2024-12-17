@@ -227,7 +227,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
     return sim
 
 
-def sim_com(config="data/config.json", inData=None, params=None, **kwargs):
+def Markov(config="data/config.json", inData=None, params=None, **kwargs):
 
     if inData is None:  # otherwise we use what is passed
         from MaaSSim.data_structures import structures
@@ -258,16 +258,16 @@ def sim_com(config="data/config.json", inData=None, params=None, **kwargs):
     sim = Simulator(inData, params=params, **kwargs)  # initialize
     
     # Initialization ------------------------------------------------------
-    interval = 50
-    step = 0.2 # euro/km
-    threshold_u = 0.005
-    max_revenue = 2865 # maximum revenue with the initial fare
-    alpha = 0.6
-    min_fare = 0.0
-    max_fare = 3.0
+    interval = params.interval
+    step = params.step
+    threshold_u = params.threshold_u
+    max_revenue = params.max_revenue # maximum revenue with the initial fare
+    alpha = params.alpha
+    min_fare = params.min_fare
+    max_fare = params.max_fare
     
-    sim.platforms.fare[1] = 1.0
-    sim.platforms.fare[2] = 1.0
+    sim.platforms.fare[1] = params.initial_fares[0]
+    sim.platforms.fare[2] = params.initial_fares[1]
     # Initialization ------------------------------------------------------
 
     for day in range(params.get('nD', 1)):  # run iterations
@@ -348,7 +348,6 @@ def sim_com(config="data/config.json", inData=None, params=None, **kwargs):
         if sim.functions.f_stop_crit(sim=sim):
             break
     return sim
-
 
 
 if __name__ == "__main__":

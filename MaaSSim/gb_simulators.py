@@ -258,7 +258,6 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
         inData.platforms = generate_platforms(inData, params, params.get('nPM', 1))
 
     inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
-
     sim = Simulator(inData, params=params, **kwargs)  # initialize
     
     # Competition ===========================================================    
@@ -294,20 +293,6 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
     
     for day in range(params.get('nD', 1)):
 
-#         if day<turnover_interval:
-#             sim.run_id = day
-#             print('Day = ', day)
-#             sim.make_and_run(run_id=day)  
-#             sim.output(run_id=day)
-            
-#             df = sim.res[day].pax_exp
-#             fd = sim.res[day].veh_exp
-#             np1 = len(df[df.platform_id==1]);np2 = len(df[df.platform_id==2])
-#             vp1 = len(fd[fd.platform_id==1]);vp2 = len(fd[fd.platform_id==2])
-#             print('np1 = ', np1, '  np2 = ', np2);print('vp1 = ', vp1, '  vp2 = ', vp2)
-            # print('number of p1_hate = ',len(df[df.P1_hate> params.punish_threshold]), '    number of p2_hate',len(df[df.P2_hate>params.punish_threshold]))
-            # print('number of p1_hate = ',len(fd[fd.P1_hate>params.punish_threshold]), '    number of p2_hate',len(fd[fd.P2_hate>params.punish_threshold]))
-        
         if day%turnover_interval==0:
             
             p1_trun, p2_trun = (turn_count % 2 == 0, turn_count % 2 != 0)
@@ -473,7 +458,6 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
             if  day==499:
                 if input('Say stop if you want to break: ')=='stop':
                     break
-            
 #-------------------------------------------------------------------------------------------
         if sim.functions.f_stop_crit(sim=sim):
             break
