@@ -81,18 +81,20 @@ class Simulator:
 
         self.myinit(**kwargs)  # part that is called every run
         # output
-        self.run_ids = list()  # ids of consecutively executed runs
+        # self.run_ids = list()  # ids of consecutively executed runs
+        self.run_id = 0
         self.runs = dict()  # simulation outputs (raw)
         self.res = dict()  # simulation results (processed)
+        
         self.logger = self.init_log(**kwargs)
         self.logger.warning("""Setting up {}h simulation at {} for {} vehicles and {} passengers in {}"""
                             .format(self.params.simTime,
                                     self.t0, self.params.nV, self.params.nP,
                                     self.params.city))
         self.driver_p = []         
-        self.traveller_p = []
-        
-        self.trajectory = {'P1':[], 'P2':[]}
+        self.traveller_p = [] 
+        self.fare_trajectory = [] # it is used for Try and Select competition model
+        self.competition_trajectory = {'P1':[], 'P2':[]} # it is used for Markov competition model
         
         # self.income = DotMap() #f#
         # self.income.expected = pd.DataFrame({'veh_id': list(range(1,self.params.nV+1))}).set_index('veh_id') #f#
@@ -166,12 +168,12 @@ class Simulator:
 
     def make_res(self, run_id):
         # called at the end of simulation
-        if run_id == None:
-            if len(self.run_ids) > 0:
-                run_id = self.run_ids[-1] + 1
-            else:
-                run_id = 0
-        self.run_ids.append(run_id)
+        # if run_id == None:
+        #     if len(self.run_ids) > 0:
+        #         run_id = self.run_ids[-1] + 1
+        #     else:
+        #         run_id = 0
+        # self.run_ids.append(run_id)
         trips = pd.concat([pd.DataFrame(self.pax[pax].rides) for pax in self.pax.keys()])
         outcomes = [self.pax[pax].rides[-1]['event'] for pax in self.pax.keys()]
         rides = pd.concat([pd.DataFrame(self.vehs[pax].myrides) for pax in self.vehs.keys()])
@@ -183,11 +185,12 @@ class Simulator:
 
     def output(self, run_id=None):
         # called after the run for refined results
-        run_id = self.run_ids[-1] if run_id is None else run_id
+        # run_id = self.run_ids[-1] if run_id is None else run_id
         veh = self.functions.kpi_veh(sim = self, run_id = run_id)
         ret = self.functions.kpi_pax(sim = self, run_id = run_id, retV = veh['veh_exp'])
         ret.update(veh)
         self.res[run_id] = DotMap(ret)
+
 
     #########
     # UTILS #

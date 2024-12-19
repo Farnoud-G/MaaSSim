@@ -7,7 +7,85 @@ from numpy import log as ln
 import random
 from statsmodels.tsa.stattools import adfuller
     
+
+def S_driver_opt_out_TS(veh, **kwargs): # user defined function to represent agent participation choice
+    """
+    This function depends on stochasticity and heterogeneity of model
+    """
+    sim = veh.sim
+    params = sim.params
+    run_id = sim.run_id
+    RW_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    alts_u = {'RW': RW_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_x = {'RW': 'Nan', 'P1': 'Nan', 'P2': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_p = {'RW': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    nPM = 0
+
+    # p1_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P1_INFORMED.loc[veh.id]
+    # p2_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P2_INFORMED.loc[veh.id]
+    p1_informed = True; p2_informed = True
     
+    # P1 utilization-------------------------------------------------------------------
+    if p1_informed==True:
+        
+        P1_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_EXPERIENCE_U.loc[veh.id]
+        P1_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_MARKETING_U.loc[veh.id]
+        P1_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_WOM_U.loc[veh.id]
+        
+        P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
+        alts_u['plats']['P1'] = P1_U
+        nPM += 1
+        veh.veh.P1_U = P1_U
+    
+    #P2 utilization---------------------------------------------------------------------
+    if p2_informed==True:
+
+        P2_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_EXPERIENCE_U.loc[veh.id]
+        P2_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_MARKETING_U.loc[veh.id]
+        P2_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_WOM_U.loc[veh.id]
+        
+        P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
+        alts_u['plats']['P2'] = P2_U
+        nPM += 1
+        veh.veh.P2_U = P2_U
+    
+    # -----------------------------------------------------------------------------------
+    if nPM == 0: # there is only one choice RW
+        return True  
+            
+    else: # Nested Logit (NL)
+        for p in alts_u['plats']: # calculate X in platform nest
+            alts_x['plats'][p] = math.exp(params.d2d.mn*alts_u['plats'][p]) if alts_u['plats'][p]!= 'Nan' else 0
+
+        w = (1/params.d2d.mn)*ln(sum(alts_x['plats'].values()))    # RH satisfaction - Logsum
+        for p in alts_u['plats']: # calculate probability in platform nest
+            alts_p['plats'][p] = alts_x['plats'][p]/sum(alts_x['plats'].values())
+            alts_u[p] = w if alts_u['plats'][p]!= 'Nan' else 'Nan'
+
+        alts_x.pop('plats', None)
+        for alt in alts_x:
+            alts_x[alt] = math.exp(params.d2d.m*alts_u[alt]) if alts_u[alt]!= 'Nan' else 0
+
+        x_w = math.exp(params.d2d.m*w)
+        for alt in alts_x:
+            alts_p[alt] = (alts_x[alt]/(alts_x['RW'] + x_w))*alts_p['plats'][alt] if alt!='RW' else alts_x[alt]/(alts_x['RW'] + x_w)
+
+    #-----------------------------------------------------------------------------------------
+    rand_v = random.uniform(0,1)
+
+    if rand_v <= alts_p['RW']:
+        return True  # opts for RW
+    elif rand_v <= alts_p['RW'] + alts_p['P1']:
+        veh.platform_id = 1
+        veh.veh.platform = 1  # opts for platform number 1
+        veh.platform = veh.sim.plats[veh.veh.platform]
+        return False
+    else:
+        veh.platform_id = 2
+        veh.veh.platform = 2  # opts for platform number 2
+        veh.platform = veh.sim.plats[veh.veh.platform]
+        return False
+
 def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent participation choice
     """
     This function depends on stochasticity and heterogeneity of model
@@ -71,7 +149,7 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
 
     #=====================================================================================
     rand_v = random.uniform(0,1)
-
+    
     if rand_v <= alts_p['RW']:
         return True  # opts for RW
     elif rand_v <= alts_p['RW'] + alts_p['P1']:
@@ -83,6 +161,85 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         veh.platform_id = 2
         veh.veh.platform = 2  # opts for platform number 2
         veh.platform = veh.sim.plats[veh.veh.platform]
+        return False
+
+
+    
+def S_traveller_opt_out_TS(pax, **kwargs):
+    
+    sim = pax.sim
+    params = sim.params
+    run_id = sim.run_id
+    PT_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    
+    alts_u = {'PT': PT_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_x = {'PT': 'Nan', 'P1': 'Nan', 'P2': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_p = {'PT': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    nPM = 0
+    
+    # p1_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P1_INFORMED.loc[pax.id]
+    # p2_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P2_INFORMED.loc[pax.id]
+    p1_informed = True; p2_informed = True
+    
+    #P1 utilization---------------------------------------------------------------------
+    if p1_informed==True:
+        
+        P1_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P1_EXPERIENCE_U.loc[pax.id]    
+        P1_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P1_MARKETING_U.loc[pax.id]
+        P1_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P1_WOM_U.loc[pax.id]
+    
+        P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
+        alts_u['plats']['P1'] = P1_U
+        nPM += 1
+        pax.pax.P1_U = P1_U
+        
+    #P2 utilization---------------------------------------------------------------------
+    if p2_informed==True:
+        
+        P2_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P2_EXPERIENCE_U.loc[pax.id]    
+        P2_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P2_MARKETING_U.loc[pax.id]
+        P2_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P2_WOM_U.loc[pax.id]
+    
+        P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
+        alts_u['plats']['P2'] = P2_U
+        nPM += 1
+        pax.pax.P2_U = P2_U
+        
+    # -----------------------------------------------------------------------------------
+    if nPM == 0: # there is only one choice RW
+        return True   
+            
+    else: # Nested Logit (NL)
+        for p in alts_u['plats']: # calculate X in platform nest
+            alts_x['plats'][p] = math.exp(params.d2d.mn*alts_u['plats'][p]) if alts_u['plats'][p]!= 'Nan' else 0
+
+        w = (1/params.d2d.mn)*ln(sum(alts_x['plats'].values()))    # RH satisfaction - Logsum
+        for p in alts_u['plats']: # calculate probability in platform nest
+            alts_p['plats'][p] = alts_x['plats'][p]/sum(alts_x['plats'].values())
+            alts_u[p] = w if alts_u['plats'][p]!= 'Nan' else 'Nan'
+
+        alts_x.pop('plats', None)
+        for alt in alts_x:
+            alts_x[alt] = math.exp(params.d2d.m*alts_u[alt]) if alts_u[alt]!= 'Nan' else 0
+
+        x_w = math.exp(params.d2d.m*w)
+        for alt in alts_x:
+            alts_p[alt] = (alts_x[alt]/(alts_x['PT'] + x_w))*alts_p['plats'][alt] if alt!='PT' else alts_x[alt]/(alts_x['PT'] + x_w)
+    
+    #-----------------------------------------------------------------------------------
+    rand_v = random.uniform(0,1)
+
+    if rand_v <= alts_p['PT']:
+        return True  # opts for PT
+    elif rand_v <= alts_p['PT'] + alts_p['P1']:
+        pax.platform_id = 1
+        pax.pax.platform = 1  # opts for platform number 1
+        pax.platform = pax.sim.plats[pax.pax.platform]
+        return False
+    else:
+        pax.platform_id = 2
+        pax.pax.platform = 2  # opts for platform number 2
+        pax.platform = pax.sim.plats[pax.pax.platform]
         return False
 
 

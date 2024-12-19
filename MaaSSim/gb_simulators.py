@@ -258,6 +258,7 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
         inData.platforms = generate_platforms(inData, params, params.get('nPM', 1))
 
     inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
+
     sim = Simulator(inData, params=params, **kwargs)  # initialize
     
     # Competition ===========================================================    
@@ -292,7 +293,7 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
     # sim.competition_trajectory = [(sim.platforms.fare[2], sim.platforms.fare[1])]
     
     for day in range(params.get('nD', 1)):
-
+        
         if day%turnover_interval==0:
             
             p1_trun, p2_trun = (turn_count % 2 == 0, turn_count % 2 != 0)
@@ -318,7 +319,6 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
                     print('Left cell: Fare = {} & P1 Remaining capital = {} & P2 Remaining capital = {}'.format(sim.platforms.fare[1], sim.res[d].platforms.P_remaining_capital.loc[1], sim.res[d].platforms.P_remaining_capital.loc[2]))
                     print('--------------------------------------------')
                     res_copyL = copy.deepcopy(sim.res) 
-                    # sim.resL = res_copyL #####
                     L_point = res_copyL[d].platforms.P_remaining_capital.loc[1]                        
                     ava_points.append(L_point)
                     res_list.append(res_copyL)
@@ -458,6 +458,7 @@ def simulate_Try_and_Select(config="data/config.json", inData=None, params=None,
             if  day==499:
                 if input('Say stop if you want to break: ')=='stop':
                     break
+            
 #-------------------------------------------------------------------------------------------
         if sim.functions.f_stop_crit(sim=sim):
             break

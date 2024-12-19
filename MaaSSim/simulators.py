@@ -14,6 +14,8 @@ from scipy.optimize import brute
 import logging
 import re
 import random
+import numpy as np
+import copy
 
 
 def single_pararun(one_slice, *args):
@@ -184,8 +186,6 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         #         sim.platforms.discount[2] = 0
         #         sim.platforms.comm_rate[1] = 0
         #         sim.platforms.comm_rate[2] = 0
-            
-        
         
         # 4- Marketing adjustment ------------------------------------------
         if 0<=day<100:
@@ -348,6 +348,254 @@ def Markov(config="data/config.json", inData=None, params=None, **kwargs):
         if sim.functions.f_stop_crit(sim=sim):
             break
     return sim
+#------------------------------------------------------------------------------
+
+def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs):
+
+    if inData is None:  # otherwise we use what is passed
+        from MaaSSim.data_structures import structures
+        inData = structures.copy()  # fresh data
+    if params is None:
+        params = get_config(config, root_path = kwargs.get('root_path'))  # load from .json file
+    if kwargs.get('make_main_path',False):
+        from MaaSSim.utils import make_config_paths
+        params = make_config_paths(params, main = kwargs.get('make_main_path',False), rel = True)
+
+    if params.paths.get('vehicles', False):
+        inData = read_vehicle_positions(inData, path=params.paths.vehicles)
+
+    if len(inData.G) == 0:  # only if no graph in input
+        inData = load_G(inData, params, stats=True)  # download graph for the 'params.city' and calc the skim matrices
+        
+    if params.paths.get('requests', False):
+        inData = read_requests_csv(inData, params, path=params.paths.requests)
+        
+    if len(inData.passengers) == 0:  # only if no passengers in input
+        inData = generate_demand(inData, params, avg_speed=True)
+    if len(inData.vehicles) == 0:  # only if no vehicles in input
+        inData.vehicles = generate_vehicles(inData, params, params.nV)
+    if len(inData.platforms) == 0:  # only if no platforms in input
+        inData.platforms = generate_platforms(inData, params, params.get('nPM', 1))
+
+    inData = prep_shared_rides(inData, params.shareability)  # prepare schedules
+    sim = Simulator(inData, params=params, **kwargs)  # initialize
+    
+    # Initialization ------------------------------------------------------
+    # threshold_u = params.threshold_u
+    # max_revenue = params.max_revenue # maximum revenue with the initial fare
+    # alpha = params.alpha
+    turnover_interval = params.turnover_interval
+    step_size = params.step_size
+    initial_fares = params.initial_fares
+    min_fare = params.min_fare
+    max_fare = params.max_fare
+    fares = np.arange(min_fare, max_fare+step_size, step_size)
+    max_i = len(fares)-1
+    # fare_grid is consistent with the visuals where on each row P1 changes and P2 is fixed and vice versa in each column.
+    fare_grid = np.array([[(x, y) for y in fares] for x in fares])
+    fare_grid = np.round(fare_grid, 1)
+    
+    if params.random_ini_position == True:
+        p1_i = np.random.randint(0, max_i+1)
+        p2_i = np.random.randint(0, max_i+1)
+    else: 
+        p1_i = np.where(fares == initial_fares[0])[0][0]
+        p2_i = np.where(fares == initial_fares[1])[0][0]
+            
+    turn_count = 0
+    
+    sim.platforms.fare[1] = fare_grid[p2_i, p1_i][0]
+    sim.platforms.fare[2] = fare_grid[p2_i, p1_i][1]
+    sim.fare_trajectory.append((sim.platforms.fare[2], sim.platforms.fare[1]))
+
+    sim.platforms.comm_rate[1] = 0.20
+    sim.platforms.comm_rate[2] = 0.20
+
+    sim.platforms.discount[1] = 0.0
+    sim.platforms.discount[2] = 0.0
+
+    # No marketing due to the created noise into competition
+    sim.platforms.daily_marketing[1] = False
+    sim.platforms.daily_marketing[2] = False
+    # Initialization ------------------------------------------------------
+
+    for day in range(params.get('nD', 1)):
+                
+        if day%turnover_interval==0:
+            
+            p1_trun, p2_trun = (turn_count % 2 == 0, turn_count % 2 != 0)
+            ava_points = []
+            res_list = []
+            
+            #============================ P1 ============================
+            if p1_trun==True:
+                print('============ P1 TURN ============')
+                
+            #---------------------------- P1 Left -----------------------
+                if p1_i!=0:
+                    for d in range(day, day+turnover_interval):
+                        sim.run_id = d
+                        sim.platforms.fare[1] = fare_grid[p2_i, p1_i-1][1] 
+                        sim.make_and_run(run_id=d)
+                        sim.output(run_id=d)
+                        cell_print(sim, d, cell='Left', end=day+turnover_interval, fare=sim.platforms.fare[1])
+
+                    res_copyL = copy.deepcopy(sim.res) 
+                    L_point = u_calculator(sim, res=res_copyL, platform_id=1, day=day)
+                    ava_points.append(L_point)
+                    res_list.append(res_copyL)
+                else:
+                    ava_points.append(u_calculator(sim, res=None, platform_id=1, day=day))
+                    res_list.append(None)
+            #---------------------------- P1 Left -----------------------
+            
+            #---------------------------- P1 Middle ---------------------
+                for d in range(day, day+turnover_interval):
+                    sim.run_id = d
+                    sim.platforms.fare[1] = fare_grid[p2_i, p1_i][1]                        
+                    sim.make_and_run(run_id=d)
+                    sim.output(run_id=d)
+                    cell_print(sim, d, cell='Middle', end=day+turnover_interval, fare=sim.platforms.fare[1])
+
+                res_copyM = copy.deepcopy(sim.res) 
+                M_point = u_calculator(sim, res=res_copyM, platform_id=1, day=day)
+                ava_points.append(M_point)
+                res_list.append(res_copyM)
+            #---------------------------- P1 Middle ---------------------
+                
+            #---------------------------- P1 Right ----------------------
+                if p1_i!=max_i:
+                    for d in range(day, day+turnover_interval):
+                        sim.run_id = d
+                        sim.platforms.fare[1] = fare_grid[p2_i, p1_i+1][1]                        
+                        sim.make_and_run(run_id=d)
+                        sim.output(run_id=d)
+                        cell_print(sim, d, cell='Right', end=day+turnover_interval, fare=sim.platforms.fare[1])
+
+                    res_copyR = copy.deepcopy(sim.res)   
+                    R_point = u_calculator(sim, res=res_copyR, platform_id=1, day=day)
+                    ava_points.append(R_point)
+                    res_list.append(res_copyR)
+                else:
+                    ava_points.append(u_calculator(sim, res=None, platform_id=1, day=day))
+                    res_list.append(None)
+            #---------------------------- P1 Right ---------------------
+                
+                # ava_points = [3,2,1]
+                print(ava_points)
+                next_move = ava_points.index(max(ava_points))
+                p1_i = max(0, min(max_i, p1_i + [-1, 0, 1][next_move]))
+                sim.platforms.fare[1] = fare_grid[p2_i, p1_i][1] 
+                sim.res = copy.deepcopy(res_list[next_move])
+                print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
+            
+            #============================ P1 ============================
+            
+            #============================ P2 ============================
+            elif p2_trun==True:
+                print('============ P2 TURN ============')
+                
+            #---------------------------- P2 Lower ----------------------    
+                if p2_i!=0:
+                    for d in range(day, day+turnover_interval):
+                        sim.run_id = d
+                        sim.platforms.fare[2] = fare_grid[p2_i-1, p1_i][0]                        
+                        sim.make_and_run(run_id=d)
+                        sim.output(run_id=d)
+                        cell_print(sim, d, cell='Lower', end=day+turnover_interval, fare=sim.platforms.fare[2])
+
+                    res_copyL = copy.deepcopy(sim.res) 
+                    L_point = u_calculator(sim, res=res_copyL, platform_id=2, day=day)
+                    ava_points.append(L_point)
+                    res_list.append(res_copyL)
+                else:
+                    ava_points.append(u_calculator(sim, res=None, platform_id=2, day=day))
+                    res_list.append(None)
+            #---------------------------- P2 Lower ----------------------
+            
+            #---------------------------- P2 Middle ---------------------
+                for d in range(day, day+turnover_interval):
+                    sim.run_id = d
+                    sim.platforms.fare[2] = fare_grid[p2_i, p1_i][0]                        
+                    sim.make_and_run(run_id=d)
+                    sim.output(run_id=d)
+                    cell_print(sim, d, cell='Middle', end=day+turnover_interval, fare=sim.platforms.fare[2])
+
+                res_copyM = copy.deepcopy(sim.res) 
+                M_point = u_calculator(sim, res=res_copyM, platform_id=2, day=day)
+                ava_points.append(M_point)
+                res_list.append(res_copyM)
+            #---------------------------- P2 Middle ---------------------
+            
+            #---------------------------- P2 Upper ----------------------
+                if p2_i!=max_i:
+                    for d in range(day, day+turnover_interval):
+                        sim.run_id = d
+                        sim.platforms.fare[2] = fare_grid[p2_i+1, p1_i][0]                        
+                        sim.make_and_run(run_id=d)
+                        sim.output(run_id=d)
+                        cell_print(sim, d, cell='Upper', end=day+turnover_interval, fare=sim.platforms.fare[2])
+
+                    res_copyU = copy.deepcopy(sim.res)
+                    # R_point = res_copyR[d].plat_exp.remaining_capital.loc[2]
+                    U_point = u_calculator(sim, res=res_copyU, platform_id=2, day=day)
+                    ava_points.append(U_point)
+                    res_list.append(res_copyU)
+                else:
+                    ava_points.append(u_calculator(sim, res=None, platform_id=2, day=day))
+                    res_list.append(None)
+            #---------------------------- P2 Upper ----------------------
+            
+                print(ava_points)  
+                # ava_points = [3,2,1]
+                next_move = ava_points.index(max(ava_points))
+                p2_i = max(0, min(max_i, p2_i + [-1, 0, 1][next_move]))
+                sim.platforms.fare[2] = fare_grid[p2_i, p1_i][0] 
+                sim.res = copy.deepcopy(res_list[next_move]) 
+                print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
+            #============================ P2 ============================
+
+            turn_count += 1
+            sim.fare_trajectory.append((sim.platforms.fare[2], sim.platforms.fare[1]))
+            day = day+turnover_interval
+            # if  day==499:
+            #     if input('Say stop if you want to break: ')=='stop':
+            #         break
+        if sim.functions.f_stop_crit(sim=sim):
+            break
+    return sim
+
+
+def u_calculator(sim, res, platform_id, day):
+    if res==None:
+        sim.competition_trajectory['P{}'.format(platform_id)].append((None))
+        return -float('inf')
+    else:
+        params = sim.params
+        ti = params.turnover_interval
+
+        revenue = sum(res[i].plat_exp.revenue[platform_id] for i in range(day, day+ti)) / ti
+        revenue_share = revenue/params.max_revenue
+        P_market_share = sum(res[i].plat_exp.P_market_share[platform_id] for i in range(day, day+ti)) / ti
+        V_market_share = sum(res[i].plat_exp.V_market_share[platform_id] for i in range(day, day+ti)) / ti
+        market_share = sum(res[i].plat_exp.market_share[platform_id] for i in range(day, day+ti)) / ti
+        utility = params.alpha*revenue_share + (1-params.alpha)*market_share # revenue and market share are normalized to 0-
+        sim.competition_trajectory['P{}'.format(platform_id)].append((sim.platforms.fare[platform_id], utility, revenue, market_share))
+
+        return utility
+
+
+def cell_print(sim, d, cell, end, fare):
+    print('Day = ', d, '--- on the {} cell with fare {}'.format(cell, fare))
+    df = sim.res[d].pax_exp;fd = sim.res[d].veh_exp
+    np1 = len(df[df.platform_id==1]);np2 = len(df[df.platform_id==2])
+    vp1 = len(fd[fd.platform_id==1]);vp2 = len(fd[fd.platform_id==2])
+    print('(np1,vp1) = ', (np1,vp1), '    (np2,vp2) = ', (np2,vp2))
+    print('--------------------------------------------')
+    if d == end-1:
+        # print('Left cell: Fare = {} & P1 Remaining capital = {} & P2 Remaining capital = {}'.format(sim.platforms.fare[1], sim.res[d].platforms.P_remaining_capital.loc[1], sim.res[d].platforms.P_remaining_capital.loc[2]))
+        print('--------------------------------------------')
+    
 
 
 if __name__ == "__main__":
