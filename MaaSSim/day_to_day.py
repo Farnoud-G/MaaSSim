@@ -163,8 +163,6 @@ def S_driver_opt_out(veh, **kwargs): # user defined function to represent agent 
         veh.platform = veh.sim.plats[veh.veh.platform]
         return False
 
-
-    
 def S_traveller_opt_out_TS(pax, **kwargs):
     
     sim = pax.sim
@@ -180,6 +178,12 @@ def S_traveller_opt_out_TS(pax, **kwargs):
     # p1_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P1_INFORMED.loc[pax.id]
     # p2_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P2_INFORMED.loc[pax.id]
     p1_informed = True; p2_informed = True
+    
+    P1_hate = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_hate.loc[pax.id]
+    P2_hate = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_hate.loc[pax.id]
+    
+    p1_informed = P1_hate <= 0
+    p2_informed = P2_hate <= 0
     
     #P1 utilization---------------------------------------------------------------------
     if p1_informed==True:
@@ -262,6 +266,7 @@ def S_traveller_opt_out(pax, **kwargs):
     
     #P1 utilization---------------------------------------------------------------------
     # p1_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_INFORMED.loc[pax.id]
+    p1_informed = True
     if p1_informed==True:
         
         P1_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_EXPERIENCE_U.loc[pax.id]    
@@ -275,6 +280,7 @@ def S_traveller_opt_out(pax, **kwargs):
         
     #P2 utilization---------------------------------------------------------------------
     # p2_informed = False if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_INFORMED.loc[pax.id]
+    p2_informed = True
     if p2_informed==True:
         
         P2_EXPERIENCE_U = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_EXPERIENCE_U.loc[pax.id]    
