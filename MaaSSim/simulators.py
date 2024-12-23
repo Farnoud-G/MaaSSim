@@ -381,7 +381,7 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
     sim = Simulator(inData, params=params, **kwargs)  # initialize
     
     # Initialization ------------------------------------------------------
-    # threshold_u = params.threshold_u
+    threshold_u = params.threshold_u
     # max_revenue = params.max_revenue # maximum revenue with the initial fare
     # alpha = params.alpha
     turnover_interval = params.turnover_interval
@@ -391,6 +391,8 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
     max_fare = params.max_fare
     fares = np.arange(min_fare, max_fare+step_size, step_size)
     max_i = len(fares)-1
+    P1_max = [(0,0)] #(max utility, max utility fare)
+    P2_max = [(0,0)]
     # fare_grid is consistent with the visuals where on each row P1 changes and P2 is fixed and vice versa in each column.
     fare_grid = np.array([[(x, y) for y in fares] for x in fares])
     fare_grid = np.round(fare_grid, 1)
@@ -414,9 +416,8 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
     sim.platforms.discount[1] = 0.0
     sim.platforms.discount[2] = 0.0
 
-    # No marketing due to the created noise into competition
-    sim.platforms.daily_marketing[1] = False
-    sim.platforms.daily_marketing[2] = False
+    sim.platforms.daily_marketing[1] = True
+    sim.platforms.daily_marketing[2] = True
     # Initialization ------------------------------------------------------
 
     for day in range(params.get('nD', 1)):
@@ -481,14 +482,32 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
                     res_list.append(None)
             #---------------------------- P1 Right ---------------------
                 
-                # ava_points = [3,2,1]
-                print(ava_points)
-                next_move = ava_points.index(max(ava_points))
+                if max(ava_points) - P1_max[-1][0] > threshold_u:
+                    if max(ava_points) - ava_points[1] > threshold_u: 
+                        next_move = ava_points.index(max(ava_points))
+                    else:
+                        next_move = 1
+                
+                elif -threshold_u < ava_points[1] - P1_max[-1][0] < threshold_u:
+                    next_move = 1
+                        
+                else:
+                    if len(P1_max) > 1:
+                        ava_fares = [fare_grid[p2_i, p1_i-1][1], fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i+1][1]]
+                        last_valid_tuple = next((item for item in reversed(P1_max) if item[1] != P1_max[-1][1]), None)                        
+                        next_move = ava_fares.index(last_valid_tuple[1])
+                    else:
+                        next_move = 1
+                
+                u = ava_points[next_move]
+                                
                 p1_i = max(0, min(max_i, p1_i + [-1, 0, 1][next_move]))
-                sim.platforms.fare[1] = fare_grid[p2_i, p1_i][1] 
+                sim.platforms.fare[1] = fare_grid[p2_i, p1_i][1]
                 sim.res = copy.deepcopy(res_list[next_move])
+                P1_max.append((u,sim.platforms.fare[1]))
+                
+                print(ava_points)
                 print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
-            
             #============================ P1 ============================
             
             #============================ P2 ============================
@@ -545,42 +564,63 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
                     ava_points.append(u_calculator(sim, res=None, platform_id=2, day=day))
                     res_list.append(None)
             #---------------------------- P2 Upper ----------------------
-            
-                print(ava_points)  
-                # ava_points = [3,2,1]
-                next_move = ava_points.index(max(ava_points))
+                
+                if max(ava_points) - P2_max[-1][0] > threshold_u:
+                    if max(ava_points) - ava_points[1] > threshold_u: 
+                        next_move = ava_points.index(max(ava_points))
+                    else:
+                        next_move = 1
+                
+                elif -threshold_u < ava_points[1] - P2_max[-1][0] < threshold_u:
+                    next_move = 1
+                        
+                else:
+                    if len(P2_max) > 1:
+                        ava_fares = [fare_grid[p2_i-1, p1_i][0], fare_grid[p2_i, p1_i][0], fare_grid[p2_i+1, p1_i][0]]
+                        last_valid_tuple = next((item for item in reversed(P2_max) if item[1] != P2_max[-1][1]), None)                        
+                        next_move = ava_fares.index(last_valid_tuple[1])
+                    else:
+                        next_move = 1
+                
+                u = ava_points[next_move]
+                
                 p2_i = max(0, min(max_i, p2_i + [-1, 0, 1][next_move]))
                 sim.platforms.fare[2] = fare_grid[p2_i, p1_i][0] 
                 sim.res = copy.deepcopy(res_list[next_move]) 
+                P2_max.append((u,sim.platforms.fare[2]))
+                
+                print(ava_points)
                 print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
             #============================ P2 ============================
 
             turn_count += 1
             sim.fare_trajectory.append((sim.platforms.fare[2], sim.platforms.fare[1]))
             day = day+turnover_interval
-            # if  day==499:
-            #     if input('Say stop if you want to break: ')=='stop':
-            #         break
+            
         if sim.functions.f_stop_crit(sim=sim):
             break
     return sim
 
 
 def u_calculator(sim, res, platform_id, day):
+    mean_days = 5
     if res==None:
         sim.competition_trajectory['P{}'.format(platform_id)].append((None))
         return -float('inf')
     else:
         params = sim.params
         ti = params.turnover_interval
-
-        revenue = sum(res[i].plat_exp.revenue[platform_id] for i in range(day, day+ti)) / ti
+        mean_days = 5
+        s = day+ti-mean_days
+        
+        revenue = sum(res[i].plat_exp.revenue[platform_id] for i in range(s, day+ti)) / mean_days
         revenue_share = revenue/params.max_revenue
-        P_market_share = sum(res[i].plat_exp.P_market_share[platform_id] for i in range(day, day+ti)) / ti
-        V_market_share = sum(res[i].plat_exp.V_market_share[platform_id] for i in range(day, day+ti)) / ti
-        market_share = sum(res[i].plat_exp.market_share[platform_id] for i in range(day, day+ti)) / ti
+        P_market_share = sum(res[i].plat_exp.P_market_share[platform_id] for i in range(s, day+ti)) / mean_days
+        V_market_share = sum(res[i].plat_exp.V_market_share[platform_id] for i in range(s, day+ti)) / mean_days
+        market_share = sum(res[i].plat_exp.market_share[platform_id] for i in range(s, day+ti)) / mean_days
         utility = params.alpha*revenue_share + (1-params.alpha)*market_share # revenue and market share are normalized to 0-
-        sim.competition_trajectory['P{}'.format(platform_id)].append((sim.platforms.fare[platform_id], utility, revenue, market_share))
+        sim.competition_trajectory['P{}'.format(platform_id)].append((sim.platforms.fare[platform_id], utility, revenue_share, market_share))
+        print('P{}: '.format(platform_id), sim.competition_trajectory['P{}'.format(platform_id)][-1])
 
         return utility
 
@@ -595,8 +635,42 @@ def cell_print(sim, d, cell, end, fare):
     if d == end-1:
         # print('Left cell: Fare = {} & P1 Remaining capital = {} & P2 Remaining capital = {}'.format(sim.platforms.fare[1], sim.res[d].platforms.P_remaining_capital.loc[1], sim.res[d].platforms.P_remaining_capital.loc[2]))
         print('--------------------------------------------')
-    
 
+        
+        
+#                 print(ava_points)  
+#                 # ava_points = [3,2,1]
+#                 next_move = ava_points.index(max(ava_points))
+#                 p2_i = max(0, min(max_i, p2_i + [-1, 0, 1][next_move]))
+#                 sim.platforms.fare[2] = fare_grid[p2_i, p1_i][0] 
+#                 sim.res = copy.deepcopy(res_list[next_move]) 
+#                 print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
+
+
+
+#                 print(ava_points)
+                
+#                 if max(ava_points) > P1_max[-1][0]:
+#                     next_move = ava_points.index(max(ava_points))
+#                     u = ava_points[next_move]
+                
+#                 else:
+#                     if abs(ava_points[1] - P1_max[-1][0]) < 0.005 or len(P1_max) < 2:
+#                         next_move = 1
+#                         u = ava_points[next_move]
+                        
+#                     else:
+#                         old_fare = P1_max[-2][1] #?
+#                         next_move = [fare_grid[p2_i, p1_i-1][1], fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i+1][1]].index(old_fare)
+#                         u = ava_points[next_move]
+            
+#                 p1_i = max(0, min(max_i, p1_i + [-1, 0, 1][next_move]))
+#                 sim.platforms.fare[1] = fare_grid[p2_i, p1_i][1] 
+#                 sim.res = copy.deepcopy(res_list[next_move])
+#                 P1_max.append((u,sim.platforms.fare[1]))
+                
+#                 print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
+                
 
 if __name__ == "__main__":
     simulate(make_main_path='..')  # single run

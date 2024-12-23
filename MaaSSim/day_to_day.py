@@ -21,15 +21,15 @@ def S_driver_opt_out_TS(veh, **kwargs): # user defined function to represent age
     alts_p = {'RW': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
     nPM = 0
 
-    # p1_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P1_INFORMED.loc[veh.id]
-    # p2_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P2_INFORMED.loc[veh.id]
-    p1_informed = True; p2_informed = True
+    p1_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P1_INFORMED.loc[veh.id]
+    p2_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P2_INFORMED.loc[veh.id]
+    # p1_informed = True; p2_informed = True
     
-    P1_hate = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P1_hate.loc[veh.id]
-    P2_hate = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].veh_exp.P2_hate.loc[veh.id]
+    P1_hate = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_hate.loc[veh.id]
+    P2_hate = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_hate.loc[veh.id]
     
-    p1_informed = P1_hate <= 0
-    p2_informed = P2_hate <= 0
+    p1_informed = P1_hate <= 0 and p1_informed
+    p2_informed = P2_hate <= 0 and p2_informed
     
     # P1 utilization-------------------------------------------------------------------
     if p1_informed==True:
@@ -104,15 +104,15 @@ def S_traveller_opt_out_TS(pax, **kwargs):
     alts_p = {'PT': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
     nPM = 0
     
-    # p1_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P1_INFORMED.loc[pax.id]
-    # p2_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P2_INFORMED.loc[pax.id]
-    p1_informed = True; p2_informed = True
+    p1_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P1_INFORMED.loc[pax.id]
+    p2_informed = False if run_id == 0 else sim.res[run_id-1].pax_exp.P2_INFORMED.loc[pax.id]
+    # p1_informed = True; p2_informed = True
     
-    P1_hate = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P1_hate.loc[pax.id]
-    P2_hate = 0 if len(sim.res) == 0 else sim.res[len(sim.res)-1].pax_exp.P2_hate.loc[pax.id]
+    P1_hate = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P1_hate.loc[pax.id]
+    P2_hate = 0 if run_id == 0 else sim.res[run_id-1].pax_exp.P2_hate.loc[pax.id]
     
-    p1_informed = P1_hate <= 0
-    p2_informed = P2_hate <= 0
+    p1_informed = P1_hate <= 0 and p1_informed
+    p2_informed = P2_hate <= 0 and p2_informed
     
     #P1 utilization---------------------------------------------------------------------
     if p1_informed==True:
@@ -538,8 +538,11 @@ def P_U_func(row, sim, unfulfilled_requests, ret):
         hate = 3
     else:
         hate = 0
-
-    fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
+    
+    if plat.fare > 0:
+        fare = max(plat.get('base_fare',0) + plat.fare*req.dist/1000, plat.get('min_fare',0))
+    else: 
+        fare = 0
     disc_fare = (1-disc)*fare
     P_U = -(1+hate)*(disc_fare + (params.VoT/3600)*(params.d2d.B_inveh_time*req.ttrav.total_seconds() + params.d2d.B_exp_time*row.ACTUAL_WT*60))
     
@@ -572,7 +575,7 @@ def PT_utility(requests,params):
 
 
 def determine_p1_hate(row, run_id, exp):
-    hate = 10
+    hate = 5
     if row['platform_id'] == 1 and run_id>100:
         if row['P1_EXPERIENCE_U'] == 1e-2:
             return hate
@@ -582,7 +585,7 @@ def determine_p1_hate(row, run_id, exp):
         return max(exp['P1_hate'][row.name]-1, 0)
 
 def determine_p2_hate(row, run_id, exp):
-    hate = 10
+    hate = 5
     if row['platform_id'] == 2 and run_id>100:
         if row['P2_EXPERIENCE_U'] == 1e-2:
             return hate
