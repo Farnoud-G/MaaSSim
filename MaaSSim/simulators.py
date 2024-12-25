@@ -390,9 +390,10 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
     min_fare = params.min_fare
     max_fare = params.max_fare
     fares = np.arange(min_fare, max_fare+step_size, step_size)
+    fares = np.round(fares, 1)
     max_i = len(fares)-1
-    P1_max = [(0,0)] #(max utility, max utility fare)
-    P2_max = [(0,0)]
+    P1_moves = [(0,0)] #(max utility, max utility fare)
+    P2_moves = [(0,0)]
     # fare_grid is consistent with the visuals where on each row P1 changes and P2 is fixed and vice versa in each column.
     fare_grid = np.array([[(x, y) for y in fares] for x in fares])
     fare_grid = np.round(fare_grid, 1)
@@ -406,8 +407,8 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
             
     turn_count = 0
     
-    sim.platforms.fare[1] = fare_grid[p2_i, p1_i][0]
-    sim.platforms.fare[2] = fare_grid[p2_i, p1_i][1]
+    sim.platforms.fare[1] = fare_grid[p2_i, p1_i][1]
+    sim.platforms.fare[2] = fare_grid[p2_i, p1_i][0]
     sim.fare_trajectory.append((sim.platforms.fare[2], sim.platforms.fare[1]))
 
     sim.platforms.comm_rate[1] = 0.20
@@ -425,7 +426,7 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
         if day%turnover_interval==0:
             
             p1_trun, p2_trun = (turn_count % 2 == 0, turn_count % 2 != 0)
-            ava_points = []
+            ava_moves = []
             res_list = []
             
             #============================ P1 ============================
@@ -443,10 +444,10 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
 
                     res_copyL = copy.deepcopy(sim.res) 
                     L_point = u_calculator(sim, res=res_copyL, platform_id=1, day=day)
-                    ava_points.append(L_point)
+                    ava_moves.append((L_point,sim.platforms.fare[1]))
                     res_list.append(res_copyL)
                 else:
-                    ava_points.append(u_calculator(sim, res=None, platform_id=1, day=day))
+                    ava_moves.append((u_calculator(sim, res=None, platform_id=1, day=day),-1))
                     res_list.append(None)
             #---------------------------- P1 Left -----------------------
             
@@ -460,7 +461,7 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
 
                 res_copyM = copy.deepcopy(sim.res) 
                 M_point = u_calculator(sim, res=res_copyM, platform_id=1, day=day)
-                ava_points.append(M_point)
+                ava_moves.append((M_point,sim.platforms.fare[1]))
                 res_list.append(res_copyM)
             #---------------------------- P1 Middle ---------------------
                 
@@ -475,38 +476,40 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
 
                     res_copyR = copy.deepcopy(sim.res)   
                     R_point = u_calculator(sim, res=res_copyR, platform_id=1, day=day)
-                    ava_points.append(R_point)
+                    ava_moves.append((R_point, sim.platforms.fare[1]))
                     res_list.append(res_copyR)
                 else:
-                    ava_points.append(u_calculator(sim, res=None, platform_id=1, day=day))
+                    ava_moves.append((u_calculator(sim, res=None, platform_id=1, day=day),-1))
                     res_list.append(None)
             #---------------------------- P1 Right ---------------------
                 
-                if max(ava_points) - P1_max[-1][0] > threshold_u:
-                    if max(ava_points) - ava_points[1] > threshold_u: 
-                        next_move = ava_points.index(max(ava_points))
+                move_with_max_u = max(ava_moves, key=lambda x: x[0])
+                max_utility_for_max_fare = max((utility for utility, fare in P1_moves if fare == move_with_max_u[1]), default=0)
+                last_move = P1_moves[-1]
+                
+                if move_with_max_u[0] - last_move[0] > threshold_u:
+                    if move_with_max_u[0] - ava_moves[1][0] > threshold_u and move_with_max_u[0] > max_utility_for_max_fare: 
+                        next_move = ava_moves.index(move_with_max_u)
                     else:
                         next_move = 1
                 
-                elif -threshold_u < ava_points[1] - P1_max[-1][0] < threshold_u:
+                elif -threshold_u < ava_moves[1][0] - last_move[0] < threshold_u:
                     next_move = 1
                         
                 else:
-                    if len(P1_max) > 1:
-                        ava_fares = [fare_grid[p2_i, p1_i-1][1], fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i+1][1]]
-                        last_valid_tuple = next((item for item in reversed(P1_max) if item[1] != P1_max[-1][1]), None)                        
-                        next_move = ava_fares.index(last_valid_tuple[1])
+                    if len(P1_moves) > 1:
+                        last_valid_tuple = next((item for item in reversed(P1_moves) if item[1] != P1_moves[-1][1]), None) 
+                        matching_move = next((item for item in ava_moves if item[1] == last_valid_tuple[1]), None)
+                        next_move = ava_moves.index(matching_move) 
                     else:
                         next_move = 1
-                
-                u = ava_points[next_move]
-                                
+                                                
                 p1_i = max(0, min(max_i, p1_i + [-1, 0, 1][next_move]))
                 sim.platforms.fare[1] = fare_grid[p2_i, p1_i][1]
                 sim.res = copy.deepcopy(res_list[next_move])
-                P1_max.append((u,sim.platforms.fare[1]))
+                P1_moves.append((ava_moves[next_move][0],sim.platforms.fare[1]))
                 
-                print(ava_points)
+                print('available moves = ', ava_moves)
                 print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
             #============================ P1 ============================
             
@@ -525,10 +528,10 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
 
                     res_copyL = copy.deepcopy(sim.res) 
                     L_point = u_calculator(sim, res=res_copyL, platform_id=2, day=day)
-                    ava_points.append(L_point)
+                    ava_moves.append((L_point,sim.platforms.fare[2]))
                     res_list.append(res_copyL)
                 else:
-                    ava_points.append(u_calculator(sim, res=None, platform_id=2, day=day))
+                    ava_moves.append((u_calculator(sim, res=None, platform_id=2, day=day), -1))
                     res_list.append(None)
             #---------------------------- P2 Lower ----------------------
             
@@ -542,7 +545,7 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
 
                 res_copyM = copy.deepcopy(sim.res) 
                 M_point = u_calculator(sim, res=res_copyM, platform_id=2, day=day)
-                ava_points.append(M_point)
+                ava_moves.append((M_point,sim.platforms.fare[2]))
                 res_list.append(res_copyM)
             #---------------------------- P2 Middle ---------------------
             
@@ -558,38 +561,40 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
                     res_copyU = copy.deepcopy(sim.res)
                     # R_point = res_copyR[d].plat_exp.remaining_capital.loc[2]
                     U_point = u_calculator(sim, res=res_copyU, platform_id=2, day=day)
-                    ava_points.append(U_point)
+                    ava_moves.append((U_point, sim.platforms.fare[2]))
                     res_list.append(res_copyU)
                 else:
-                    ava_points.append(u_calculator(sim, res=None, platform_id=2, day=day))
+                    ava_moves.append((u_calculator(sim, res=None, platform_id=2, day=day), -1))
                     res_list.append(None)
             #---------------------------- P2 Upper ----------------------
                 
-                if max(ava_points) - P2_max[-1][0] > threshold_u:
-                    if max(ava_points) - ava_points[1] > threshold_u: 
-                        next_move = ava_points.index(max(ava_points))
+                move_with_max_u = max(ava_moves, key=lambda x: x[0])
+                max_utility_for_max_fare = max((utility for utility, fare in P2_moves if fare == move_with_max_u[1]), default=0)
+                last_move = P2_moves[-1]
+                
+                if move_with_max_u[0] - last_move[0] > threshold_u:
+                    if move_with_max_u[0] - ava_moves[1][0] > threshold_u and move_with_max_u[0] > max_utility_for_max_fare: 
+                        next_move = ava_moves.index(move_with_max_u)
                     else:
                         next_move = 1
                 
-                elif -threshold_u < ava_points[1] - P2_max[-1][0] < threshold_u:
+                elif -threshold_u < ava_moves[1][0] - last_move[0] < threshold_u:
                     next_move = 1
                         
                 else:
-                    if len(P2_max) > 1:
-                        ava_fares = [fare_grid[p2_i-1, p1_i][0], fare_grid[p2_i, p1_i][0], fare_grid[p2_i+1, p1_i][0]]
-                        last_valid_tuple = next((item for item in reversed(P2_max) if item[1] != P2_max[-1][1]), None)                        
-                        next_move = ava_fares.index(last_valid_tuple[1])
+                    if len(P2_moves) > 1:
+                        last_valid_tuple = next((item for item in reversed(P2_moves) if item[1] != P2_moves[-1][1]), None) 
+                        matching_move = next((item for item in ava_moves if item[1] == last_valid_tuple[1]), None)
+                        next_move = ava_moves.index(matching_move)
                     else:
                         next_move = 1
-                
-                u = ava_points[next_move]
-                
+                                
                 p2_i = max(0, min(max_i, p2_i + [-1, 0, 1][next_move]))
                 sim.platforms.fare[2] = fare_grid[p2_i, p1_i][0] 
                 sim.res = copy.deepcopy(res_list[next_move]) 
-                P2_max.append((u,sim.platforms.fare[2]))
+                P2_moves.append((ava_moves[next_move][0],sim.platforms.fare[2]))
                 
-                print(ava_points)
+                print('available moves = ', ava_moves)
                 print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
             #============================ P2 ============================
 
@@ -603,14 +608,13 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
 
 
 def u_calculator(sim, res, platform_id, day):
-    mean_days = 5
     if res==None:
         sim.competition_trajectory['P{}'.format(platform_id)].append((None))
         return -float('inf')
     else:
         params = sim.params
         ti = params.turnover_interval
-        mean_days = 5
+        mean_days = 10
         s = day+ti-mean_days
         
         revenue = sum(res[i].plat_exp.revenue[platform_id] for i in range(s, day+ti)) / mean_days
@@ -669,6 +673,35 @@ def cell_print(sim, d, cell, end, fare):
 #                 sim.res = copy.deepcopy(res_list[next_move])
 #                 P1_max.append((u,sim.platforms.fare[1]))
                 
+#                 print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
+
+
+
+#                 if max(ava_points) - P2_max[-1][0] > threshold_u:
+#                     if max(ava_points) - ava_points[1] > threshold_u: 
+#                         next_move = ava_points.index(max(ava_points))
+#                     else:
+#                         next_move = 1
+                
+#                 elif -threshold_u < ava_points[1] - P2_max[-1][0] < threshold_u:
+#                     next_move = 1
+                        
+#                 else:
+#                     if len(P2_max) > 1:
+#                         ava_fares = [fare_grid[p2_i-1, p1_i][0], fare_grid[p2_i, p1_i][0], fare_grid[p2_i+1, p1_i][0]]
+#                         last_valid_tuple = next((item for item in reversed(P2_max) if item[1] != P2_max[-1][1]), None)                        
+#                         next_move = ava_fares.index(last_valid_tuple[1])
+#                     else:
+#                         next_move = 1
+                
+#                 u = ava_points[next_move]
+                
+#                 p2_i = max(0, min(max_i, p2_i + [-1, 0, 1][next_move]))
+#                 sim.platforms.fare[2] = fare_grid[p2_i, p1_i][0] 
+#                 sim.res = copy.deepcopy(res_list[next_move]) 
+#                 P2_max.append((u,sim.platforms.fare[2]))
+                
+#                 print(ava_points)
 #                 print('P1 fare = {},   P2 fare = {}'.format(fare_grid[p2_i, p1_i][1], fare_grid[p2_i, p1_i][0]))
                 
 

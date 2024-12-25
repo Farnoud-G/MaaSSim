@@ -575,8 +575,8 @@ def PT_utility(requests,params):
 
 
 def determine_p1_hate(row, run_id, exp):
-    hate = 5
-    if row['platform_id'] == 1 and run_id>100:
+    hate = 10
+    if row['platform_id'] == 1 and run_id>0:
         if row['P1_EXPERIENCE_U'] == 1e-2:
             return hate
         else:
@@ -585,8 +585,8 @@ def determine_p1_hate(row, run_id, exp):
         return max(exp['P1_hate'][row.name]-1, 0)
 
 def determine_p2_hate(row, run_id, exp):
-    hate = 5
-    if row['platform_id'] == 2 and run_id>100:
+    hate = 10
+    if row['platform_id'] == 2 and run_id>0:
         if row['P2_EXPERIENCE_U'] == 1e-2:
             return hate
         else:
