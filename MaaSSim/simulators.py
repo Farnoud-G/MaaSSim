@@ -392,8 +392,8 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
     fares = np.arange(min_fare, max_fare+step_size, step_size)
     fares = np.round(fares, 1)
     max_i = len(fares)-1
-    P1_moves = [(0,0)] #(max utility, max utility fare)
-    P2_moves = [(0,0)]
+    P1_moves = [(-1,-1)] #(max utility, max utility fare)
+    P2_moves = [(-1,-1)]
     # fare_grid is consistent with the visuals where on each row P1 changes and P2 is fixed and vice versa in each column.
     fare_grid = np.array([[(x, y) for y in fares] for x in fares])
     fare_grid = np.round(fare_grid, 1)
@@ -484,7 +484,7 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
             #---------------------------- P1 Right ---------------------
                 
                 move_with_max_u = max(ava_moves, key=lambda x: x[0])
-                max_utility_for_max_fare = max((utility for utility, fare in P1_moves if fare == move_with_max_u[1]), default=0)
+                max_utility_for_max_fare = max((utility for utility, fare in P1_moves if fare == move_with_max_u[1]), default=-1)
                 last_move = P1_moves[-1]
                 
                 if move_with_max_u[0] - last_move[0] > threshold_u:
@@ -569,7 +569,7 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
             #---------------------------- P2 Upper ----------------------
                 
                 move_with_max_u = max(ava_moves, key=lambda x: x[0])
-                max_utility_for_max_fare = max((utility for utility, fare in P2_moves if fare == move_with_max_u[1]), default=0)
+                max_utility_for_max_fare = max((utility for utility, fare in P2_moves if fare == move_with_max_u[1]), default=-1)
                 last_move = P2_moves[-1]
                 
                 if move_with_max_u[0] - last_move[0] > threshold_u:
@@ -616,13 +616,18 @@ def u_calculator(sim, res, platform_id, day):
         ti = params.turnover_interval
         mean_days = 10
         s = day+ti-mean_days
-        
+        # remaining_capital as the utility evaluation tool is not consistent with Try and Select model.
+        # remaining_capital = sum(res[i].plat_exp.remaining_capital[platform_id] for i in range(s, day+ti)) / mean_days
+        # capital_share = remaining_capital/params.initial_capital
+        profit = sum(res[i].plat_exp.profit[platform_id] for i in range(s, day+ti)) / mean_days
+        profit_share = profit/params.expense_per_day
         revenue = sum(res[i].plat_exp.revenue[platform_id] for i in range(s, day+ti)) / mean_days
         revenue_share = revenue/params.max_revenue
         P_market_share = sum(res[i].plat_exp.P_market_share[platform_id] for i in range(s, day+ti)) / mean_days
         V_market_share = sum(res[i].plat_exp.V_market_share[platform_id] for i in range(s, day+ti)) / mean_days
         market_share = sum(res[i].plat_exp.market_share[platform_id] for i in range(s, day+ti)) / mean_days
-        utility = params.alpha*revenue_share + (1-params.alpha)*market_share # revenue and market share are normalized to 0-
+        # utility = params.alpha*revenue_share + (1-params.alpha)*market_share # revenue and market share are normalized to 0-
+        utility = profit_share
         sim.competition_trajectory['P{}'.format(platform_id)].append((sim.platforms.fare[platform_id], utility, revenue_share, market_share))
         print('P{}: '.format(platform_id), sim.competition_trajectory['P{}'.format(platform_id)][-1])
 
