@@ -187,6 +187,7 @@ def d2d_kpi_veh(*args,**kwargs):
     platforms = sim.platforms
     run_id = kwargs.get('run_id', None)
     simrun = sim.runs[run_id]
+    res_wage = params.d2d.res_wage
     vehindex = sim.inData.vehicles.index
     df = simrun['rides'].copy()  # results of previous simulation
     DECIDES_NOT_TO_DRIVE = df[df.event == driverEvent.DECIDES_NOT_TO_DRIVE.name].veh  # track drivers out
@@ -224,6 +225,12 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['COMMISSION'] = ret['TRIP_FARE']-ret['REVENUE']
     ret['COST'] = ret['DRIVING_DIST'] * (params.d2d.fuel_cost) # Operating Cost (OC)
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
+    
+    if params.min_wage_sub:
+        ret['MIN_WAGE_SUB'] = ret.apply(lambda row: res_wage-row.PROFIT if row.platform_id>0 and row.PROFIT<res_wage else 0, axis=1)
+        ret['PROFIT'] = ret['PROFIT'] + ret['MIN_WAGE_SUB']
+    else:
+        ret['MIN_WAGE_SUB'] = 0
     ret['mu'] = ret.apply(lambda row: 1 if row['OUT'] == False else 0, axis=1)
     ret['nDAYS_WORKED'] = ret['mu'] if run_id == 0 else sim.res[run_id-1].veh_exp.nDAYS_WORKED + ret['mu']
     ret.fillna(0, inplace=True)
@@ -330,7 +337,8 @@ def d2d_kpi_veh(*args,**kwargs):
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'IDLE_TIME', 'PICKUP_DIST',
                'DRIVING_DIST','REVENUE','COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu',
                'P1_INFORMED','P2_INFORMED','P1_EXPERIENCE_U','P2_EXPERIENCE_U','P1_MARKETING_U',
-               'P2_MARKETING_U', 'P1_WOM_U', 'P2_WOM_U','inc_dif', 'platform_id','P1_hate', 'P2_hate'] + 
+               'P2_MARKETING_U', 'P1_WOM_U', 'P2_WOM_U','inc_dif', 'platform_id','P1_hate', 'P2_hate',
+               'MIN_WAGE_SUB'] + 
               [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
@@ -498,8 +506,10 @@ def d2d_kpi_pax(*args,**kwargs):
     expense_per_day = params.expense_per_day
     df_plat = pd.DataFrame(columns=['platform_id', 'fare', 'revenue', 'profit', 'nP', 'nV']).set_index('platform_id')
     df_plat.at[1, 'revenue'] = ret[ret.platform_id==1].plat_revenue.sum()
-    df_plat.at[2, 'revenue'] = ret[ret.platform_id==2].plat_revenue.sum() 
-    df_plat['profit'] = df_plat.revenue-expense_per_day
+    df_plat.at[2, 'revenue'] = ret[ret.platform_id==2].plat_revenue.sum()
+    df_plat.at[1, 'min_wage_sub'] = retV[retV.platform_id==1].MIN_WAGE_SUB.sum()
+    df_plat.at[2, 'min_wage_sub'] = retV[retV.platform_id==2].MIN_WAGE_SUB.sum()
+    df_plat['profit'] = df_plat.revenue-expense_per_day-df_plat.min_wage_sub
     df_plat['remaining_capital'] = initial_capital+df_plat.profit if run_id == 0 else sim.res[run_id-1].plat_exp.remaining_capital+df_plat.profit
     
     df_plat.at[1, 'nP'] = len(ret[ret.platform_id==1])
