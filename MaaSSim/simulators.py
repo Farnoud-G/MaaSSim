@@ -614,7 +614,7 @@ def u_calculator(sim, res, platform_id, day):
     else:
         params = sim.params
         ti = params.turnover_interval
-        mean_days = 1
+        mean_days = 10
         s = day+ti-mean_days
         
         revenue = sum(res[i].plat_exp.revenue[platform_id] for i in range(s, day+ti)) / mean_days
