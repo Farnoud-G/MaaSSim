@@ -187,7 +187,8 @@ def d2d_kpi_veh(*args,**kwargs):
     platforms = sim.platforms
     run_id = kwargs.get('run_id', None)
     simrun = sim.runs[run_id]
-    res_wage = params.d2d.res_wage
+    # sub_lim = params.simTime*params.VoT
+    sub_lim = params.simTime*9.6 # 14.4
     vehindex = sim.inData.vehicles.index
     df = simrun['rides'].copy()  # results of previous simulation
     DECIDES_NOT_TO_DRIVE = df[df.event == driverEvent.DECIDES_NOT_TO_DRIVE.name].veh  # track drivers out
@@ -227,7 +228,7 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['PROFIT'] = ret['REVENUE'] - ret['COST']
     
     if params.min_wage_sub:
-        ret['MIN_WAGE_SUB'] = ret.apply(lambda row: res_wage-row.PROFIT if row.platform_id>0 and row.PROFIT<res_wage else 0, axis=1)
+        ret['MIN_WAGE_SUB'] = ret.apply(lambda row: sub_lim-row.PROFIT if row.platform_id>0 and row.PROFIT<sub_lim else 0, axis=1)
         ret['PROFIT'] = ret['PROFIT'] + ret['MIN_WAGE_SUB']
     else:
         ret['MIN_WAGE_SUB'] = 0
