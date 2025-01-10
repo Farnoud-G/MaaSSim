@@ -348,10 +348,19 @@ def d2d_kpi_veh(*args,**kwargs):
     ret['P1_U'] = float('nan'); ret['P2_U'] = float('nan')
     ret['TOM_OUT'] = float('nan'); ret['TOM_platform_id'] = 1
     
+    P1_current_pax = 0; P2_current_pax = 0
+    pax_list = list(simrun.trips[simrun.trips.event=='REQUESTS_RIDE']['pax'])
+    for traveller in range(0, params.nP):
+        if traveller in pax_list and sim.pax[traveller].platform_id == 1:
+            P1_current_pax += 1
+        if traveller in pax_list and sim.pax[traveller].platform_id == 2:
+            P2_current_pax += 1
+    P_current_pax = [P1_current_pax, P2_current_pax]
+            
     if params.lock_out:
         ret['TOM_OUT'] = ret.apply(lambda row: lock_out_part_1(row, sim, ret), axis=1)
         if run_id > 0:
-            ret['TOM_OUT'] = ret.apply(lambda row: lock_out_part_2(row, sim, ret), axis=1)
+            ret['TOM_OUT'] = ret.apply(lambda row: lock_out_part_2(row, sim, ret, P_current_pax), axis=1)
     
     #===================================================================
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'IDLE_TIME', 'PICKUP_DIST',
@@ -368,31 +377,31 @@ def d2d_kpi_veh(*args,**kwargs):
     return {'veh_exp': ret, 'veh_kpi': kpi}
     
 ##########################################################
-def lock_out_part_2(row, sim, ret):
+def lock_out_part_2(row, sim, ret, P_current_pax):
     
     run_id = sim.run_id
     veh_id = row.name
-    pax_per_veh = 10
-    
+    pax_per_veh = 10 
+        
     if row.TOM_OUT:
         return row.TOM_OUT
     
     else:
         if row.TOM_platform_id==1:
             P1_current_veh = len(ret[(ret.TOM_OUT==False) & (ret.TOM_platform_id==1)])
-            P1_required_veh = len(sim.res[run_id-1].pax_exp[sim.res[run_id-1].pax_exp.platform_id==1])/pax_per_veh
+            P1_required_veh = 1 + (P_current_pax[0]/pax_per_veh)
             
             if P1_current_veh > P1_required_veh:
-                return bool(veh_id in ret.P1_U.sort_values(ascending=False).index[:round(P1_required_veh)])
+                return bool(not veh_id in ret.P1_U.sort_values(ascending=False).index[:round(P1_required_veh)])
             else:
                 return row.TOM_OUT
         
         if row.TOM_platform_id==2:
             P2_current_veh = len(ret[(ret.TOM_OUT==False) & (ret.TOM_platform_id==2)])
-            P2_required_veh = len(sim.res[run_id-1].pax_exp[sim.res[run_id-1].pax_exp.platform_id==2])/pax_per_veh
+            P2_required_veh = 1 + (P_current_pax[1]/pax_per_veh)
             
             if P2_current_veh > P2_required_veh:
-                return bool(veh_id in ret.P2_U.sort_values(ascending=False).index[:round(P2_required_veh)])
+                return bool(not veh_id in ret.P2_U.sort_values(ascending=False).index[:round(P2_required_veh)])
             else:
                 return row.TOM_OUT
     
