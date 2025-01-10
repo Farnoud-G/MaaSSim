@@ -15,82 +15,93 @@ def S_driver_opt_out_TS(veh, **kwargs): # user defined function to represent age
     sim = veh.sim
     params = sim.params
     run_id = sim.run_id
-    RW_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
-    alts_u = {'RW': RW_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
-    alts_x = {'RW': 'Nan', 'P1': 'Nan', 'P2': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
-    alts_p = {'RW': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
-    nPM = 0
-
-    p1_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P1_INFORMED.loc[veh.id]
-    p2_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P2_INFORMED.loc[veh.id]
-    # p1_informed = True; p2_informed = True
     
-    P1_hate = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_hate.loc[veh.id]
-    P2_hate = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_hate.loc[veh.id]
-    
-    p1_informed = P1_hate <= 0 and p1_informed
-    p2_informed = P2_hate <= 0 and p2_informed
-    
-    # P1 utilization-------------------------------------------------------------------
-    if p1_informed==True:
-        
-        P1_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_EXPERIENCE_U.loc[veh.id]
-        P1_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_MARKETING_U.loc[veh.id]
-        P1_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_WOM_U.loc[veh.id]
-        
-        P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
-        alts_u['plats']['P1'] = P1_U
-        nPM += 1
-        veh.veh.P1_U = P1_U
-    
-    #P2 utilization---------------------------------------------------------------------
-    if p2_informed==True:
-
-        P2_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_EXPERIENCE_U.loc[veh.id]
-        P2_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_MARKETING_U.loc[veh.id]
-        P2_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_WOM_U.loc[veh.id]
-        
-        P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
-        alts_u['plats']['P2'] = P2_U
-        nPM += 1
-        veh.veh.P2_U = P2_U
-    
-    # -----------------------------------------------------------------------------------
-    if nPM == 0: # there is only one choice RW
-        return True  
-            
-    else: # Nested Logit (NL)
-        for p in alts_u['plats']: # calculate X in platform nest
-            alts_x['plats'][p] = math.exp(params.d2d.mn*alts_u['plats'][p]) if alts_u['plats'][p]!= 'Nan' else 0
-
-        w = (1/params.d2d.mn)*ln(sum(alts_x['plats'].values()))    # RH satisfaction - Logsum
-        for p in alts_u['plats']: # calculate probability in platform nest
-            alts_p['plats'][p] = alts_x['plats'][p]/sum(alts_x['plats'].values())
-            alts_u[p] = w if alts_u['plats'][p]!= 'Nan' else 'Nan'
-
-        alts_x.pop('plats', None)
-        for alt in alts_x:
-            alts_x[alt] = math.exp(params.d2d.m*alts_u[alt]) if alts_u[alt]!= 'Nan' else 0
-
-        x_w = math.exp(params.d2d.m*w)
-        for alt in alts_x:
-            alts_p[alt] = (alts_x[alt]/(alts_x['RW'] + x_w))*alts_p['plats'][alt] if alt!='RW' else alts_x[alt]/(alts_x['RW'] + x_w)
-
-    #-----------------------------------------------------------------------------------------
-    rand_v = random.uniform(0,1)
-
-    if rand_v <= alts_p['RW']:
-        return True  # opts for RW
-    elif rand_v <= alts_p['RW'] + alts_p['P1']:
-        veh.platform_id = 1
-        veh.veh.platform = 1  # opts for platform number 1
+    if params.lock_out and run_id>0:
+        veh.veh.P1_U = sim.res[run_id-1].veh_exp.P1_U.loc[veh.id]
+        veh.veh.P2_U = sim.res[run_id-1].veh_exp.P2_U.loc[veh.id]
+        veh.platform_id = sim.res[run_id-1].veh_exp.TOM_platform_id.loc[veh.id]
+        veh.veh.platform = sim.res[run_id-1].veh_exp.TOM_platform_id.loc[veh.id]
         veh.platform = veh.sim.plats[veh.veh.platform]
-        return False
+        
+        return sim.res[run_id-1].veh_exp.TOM_OUT.loc[veh.id]
+    
     else:
-        veh.platform_id = 2
-        veh.veh.platform = 2  # opts for platform number 2
-        veh.platform = veh.sim.plats[veh.veh.platform]
-        return False
+        RW_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+        alts_u = {'RW': RW_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+        alts_x = {'RW': 'Nan', 'P1': 'Nan', 'P2': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+        alts_p = {'RW': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+        nPM = 0
+
+        p1_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P1_INFORMED.loc[veh.id]
+        p2_informed = False if run_id == 0 else sim.res[run_id-1].veh_exp.P2_INFORMED.loc[veh.id]
+        # p1_informed = True; p2_informed = True
+
+        P1_hate = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_hate.loc[veh.id]
+        P2_hate = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_hate.loc[veh.id]
+
+        p1_informed = P1_hate <= 0 and p1_informed
+        p2_informed = P2_hate <= 0 and p2_informed
+
+        # P1 utilization-------------------------------------------------------------------
+        if p1_informed==True:
+
+            P1_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_EXPERIENCE_U.loc[veh.id]
+            P1_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_MARKETING_U.loc[veh.id]
+            P1_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P1_WOM_U.loc[veh.id]
+
+            P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
+            alts_u['plats']['P1'] = P1_U
+            nPM += 1
+            veh.veh.P1_U = P1_U
+
+        #P2 utilization---------------------------------------------------------------------
+        if p2_informed==True:
+
+            P2_EXPERIENCE_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_EXPERIENCE_U.loc[veh.id]
+            P2_MARKETING_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_MARKETING_U.loc[veh.id]
+            P2_WOM_U = 0 if run_id == 0 else sim.res[run_id-1].veh_exp.P2_WOM_U.loc[veh.id]
+
+            P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
+            alts_u['plats']['P2'] = P2_U
+            nPM += 1
+            veh.veh.P2_U = P2_U
+        #------------------------------------------------------------------------------------
+
+        if nPM == 0: # there is only one choice RW
+            return True  
+
+        else: # Nested Logit (NL)
+            for p in alts_u['plats']: # calculate X in platform nest
+                alts_x['plats'][p] = math.exp(params.d2d.mn*alts_u['plats'][p]) if alts_u['plats'][p]!= 'Nan' else 0
+
+            w = (1/params.d2d.mn)*ln(sum(alts_x['plats'].values()))    # RH satisfaction - Logsum
+            for p in alts_u['plats']: # calculate probability in platform nest
+                alts_p['plats'][p] = alts_x['plats'][p]/sum(alts_x['plats'].values())
+                alts_u[p] = w if alts_u['plats'][p]!= 'Nan' else 'Nan'
+
+            alts_x.pop('plats', None)
+            for alt in alts_x:
+                alts_x[alt] = math.exp(params.d2d.m*alts_u[alt]) if alts_u[alt]!= 'Nan' else 0
+
+            x_w = math.exp(params.d2d.m*w)
+            for alt in alts_x:
+                alts_p[alt] = (alts_x[alt]/(alts_x['RW'] + x_w))*alts_p['plats'][alt] if alt!='RW' else alts_x[alt]/(alts_x['RW'] + x_w)
+
+        #-----------------------------------------------------------------------------------------
+        rand_v = random.uniform(0,1)
+
+        if rand_v <= alts_p['RW']:
+            return True  # opts for RW
+        elif rand_v <= alts_p['RW'] + alts_p['P1']:
+            veh.platform_id = 1
+            veh.veh.platform = 1  # opts for platform number 1
+            veh.platform = veh.sim.plats[veh.veh.platform]
+            return False
+        else:
+            veh.platform_id = 2
+            veh.veh.platform = 2  # opts for platform number 2
+            veh.platform = veh.sim.plats[veh.veh.platform]
+            return False
 
 def S_traveller_opt_out_TS(pax, **kwargs):
     
@@ -188,7 +199,7 @@ def d2d_kpi_veh(*args,**kwargs):
     run_id = kwargs.get('run_id', None)
     simrun = sim.runs[run_id]
     # sub_lim = params.simTime*params.VoT
-    sub_lim = params.simTime*9.6 # 14.4
+    sub_lim = params.simTime*params.min_wage # 14.4
     vehindex = sim.inData.vehicles.index
     df = simrun['rides'].copy()  # results of previous simulation
     DECIDES_NOT_TO_DRIVE = df[df.event == driverEvent.DECIDES_NOT_TO_DRIVE.name].veh  # track drivers out
@@ -330,32 +341,142 @@ def d2d_kpi_veh(*args,**kwargs):
     else:
         ret['P1_hate'] = ret.apply(lambda row: determine_p1_hate(row, run_id, sim.res[run_id-1].veh_exp), axis=1)
         ret['P2_hate'] = ret.apply(lambda row: determine_p2_hate(row, run_id, sim.res[run_id-1].veh_exp), axis=1)
-
-    # punishment -------------------------------------------------------
+    
     ret.fillna(0, inplace=True)
+    
+    # Lock out strategy -------------------------------------------------
+    ret['P1_U'] = float('nan'); ret['P2_U'] = float('nan')
+    ret['TOM_OUT'] = float('nan'); ret['TOM_platform_id'] = 1
+    
+    if params.lock_out:
+        ret['TOM_OUT'] = ret.apply(lambda row: lock_out_part_1(row, sim, ret), axis=1)
+        if run_id > 0:
+            ret['TOM_OUT'] = ret.apply(lambda row: lock_out_part_2(row, sim, ret), axis=1)
     
     #===================================================================
     ret = ret[['nRIDES','nREJECTED', 'nDAYS_WORKED', 'DRIVING_TIME', 'IDLE_TIME', 'PICKUP_DIST',
                'DRIVING_DIST','REVENUE','COST','COMMISSION','TRIP_FARE','ACTUAL_INC','OUT','mu',
                'P1_INFORMED','P2_INFORMED','P1_EXPERIENCE_U','P2_EXPERIENCE_U','P1_MARKETING_U',
                'P2_MARKETING_U', 'P1_WOM_U', 'P2_WOM_U','inc_dif', 'platform_id','P1_hate', 'P2_hate',
-               'MIN_WAGE_SUB'] + 
+               'MIN_WAGE_SUB', 'TOM_OUT', 'TOM_platform_id', 'P1_U', 'P2_U'] + 
               [_.name for _ in driverEvent]]
     ret.index.name = 'veh'
     
     # KPIs
     kpi = ret.agg(['sum', 'mean', 'std'])
     kpi['nV'] = ret.shape[0]
-    
-    #---------------------------------------------------------------------------------------
-    # plats = sim.platforms
-    # plats['profit'] = ret.COMMISSION.sum()
-    
-    #---------------------------------------------------------------------------------------
-    
     return {'veh_exp': ret, 'veh_kpi': kpi}
     
+##########################################################
+def lock_out_part_2(row, sim, ret):
     
+    run_id = sim.run_id
+    veh_id = row.name
+    pax_per_veh = 10
+    
+    if row.TOM_OUT:
+        return row.TOM_OUT
+    
+    else:
+        if row.TOM_platform_id==1:
+            P1_current_veh = len(ret[(ret.TOM_OUT==False) & (ret.TOM_platform_id==1)])
+            P1_required_veh = len(sim.res[run_id-1].pax_exp[sim.res[run_id-1].pax_exp.platform_id==1])/pax_per_veh
+            
+            if P1_current_veh > P1_required_veh:
+                return bool(veh_id in ret.P1_U.sort_values(ascending=False).index[:round(P1_required_veh)])
+            else:
+                return row.TOM_OUT
+        
+        if row.TOM_platform_id==2:
+            P2_current_veh = len(ret[(ret.TOM_OUT==False) & (ret.TOM_platform_id==2)])
+            P2_required_veh = len(sim.res[run_id-1].pax_exp[sim.res[run_id-1].pax_exp.platform_id==2])/pax_per_veh
+            
+            if P2_current_veh > P2_required_veh:
+                return bool(veh_id in ret.P2_U.sort_values(ascending=False).index[:round(P2_required_veh)])
+            else:
+                return row.TOM_OUT
+    
+
+def lock_out_part_1(row, sim, ret):
+
+    params = sim.params
+    run_id = sim.run_id
+    veh_id = row.name
+    veh = sim.vehs[veh_id]
+    RW_U = params.d2d.B_Experience*0.5 + params.d2d.B_Marketing*0.5 + params.d2d.B_WOM*0.5
+    alts_u = {'RW': RW_U, 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_x = {'RW': 'Nan', 'P1': 'Nan', 'P2': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    alts_p = {'RW': 'Nan', 'plats':{'P1': 'Nan', 'P2': 'Nan'}}
+    nPM = 0
+
+    p1_informed = ret.P1_INFORMED.loc[veh_id]
+    p2_informed = ret.P2_INFORMED.loc[veh_id]
+    
+    P1_hate = ret.P1_hate.loc[veh_id]
+    P2_hate = ret.P2_hate.loc[veh_id]
+    
+    p1_informed = P1_hate <= 0 and p1_informed
+    p2_informed = P2_hate <= 0 and p2_informed
+    
+    # P1 utilization-------------------------------------------------------------------
+    if p1_informed==True:
+        
+        P1_EXPERIENCE_U = ret.P1_EXPERIENCE_U.loc[veh_id]
+        P1_MARKETING_U = ret.P1_MARKETING_U.loc[veh_id]
+        P1_WOM_U = ret.P1_WOM_U.loc[veh_id]
+        
+        P1_U = params.d2d.B_Experience*P1_EXPERIENCE_U + params.d2d.B_Marketing*P1_MARKETING_U + params.d2d.B_WOM*P1_WOM_U
+        alts_u['plats']['P1'] = P1_U
+        ret.at[veh_id, 'P1_U'] = P1_U
+        nPM += 1
+    
+    #P2 utilization---------------------------------------------------------------------
+    if p2_informed==True:
+
+        P2_EXPERIENCE_U = ret.P2_EXPERIENCE_U.loc[veh_id]
+        P2_MARKETING_U = ret.P2_MARKETING_U.loc[veh_id]
+        P2_WOM_U = ret.P2_WOM_U.loc[veh_id]
+        
+        P2_U = params.d2d.B_Experience*P2_EXPERIENCE_U + params.d2d.B_Marketing*P2_MARKETING_U + params.d2d.B_WOM*P2_WOM_U
+        alts_u['plats']['P2'] = P2_U
+        ret.at[veh_id, 'P2_U'] = P2_U
+        nPM += 1
+        
+    #------------------------------------------------------------------------------------
+    
+    if nPM == 0: # there is only one choice RW
+        return True  
+            
+    else: # Nested Logit (NL)
+        for p in alts_u['plats']: # calculate X in platform nest
+            alts_x['plats'][p] = math.exp(params.d2d.mn*alts_u['plats'][p]) if alts_u['plats'][p]!= 'Nan' else 0
+
+        w = (1/params.d2d.mn)*ln(sum(alts_x['plats'].values()))    # RH satisfaction - Logsum
+        for p in alts_u['plats']: # calculate probability in platform nest
+            alts_p['plats'][p] = alts_x['plats'][p]/sum(alts_x['plats'].values())
+            alts_u[p] = w if alts_u['plats'][p]!= 'Nan' else 'Nan'
+
+        alts_x.pop('plats', None)
+        for alt in alts_x:
+            alts_x[alt] = math.exp(params.d2d.m*alts_u[alt]) if alts_u[alt]!= 'Nan' else 0
+
+        x_w = math.exp(params.d2d.m*w)
+        for alt in alts_x:
+            alts_p[alt] = (alts_x[alt]/(alts_x['RW'] + x_w))*alts_p['plats'][alt] if alt!='RW' else alts_x[alt]/(alts_x['RW'] + x_w)
+
+    #-----------------------------------------------------------------------------------------
+    rand_v = random.uniform(0,1)
+
+    if rand_v <= alts_p['RW']:
+        return True  # opts for RW
+    elif rand_v <= alts_p['RW'] + alts_p['P1']:
+        ret.at[veh_id, 'TOM_platform_id'] = 1
+        return False
+    else:
+        ret.at[veh_id, 'TOM_platform_id'] = 2
+        return False
+
+
 ################################################################################################
 
 def d2d_kpi_pax(*args,**kwargs):
