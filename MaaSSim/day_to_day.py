@@ -15,7 +15,6 @@ def S_driver_opt_out_TS(veh, **kwargs): # user defined function to represent age
     sim = veh.sim
     params = sim.params
     run_id = sim.run_id
-    
     if params.lock_out and run_id>0:
         veh.veh.P1_U = sim.res[run_id-1].veh_exp.P1_U.loc[veh.id]
         veh.veh.P2_U = sim.res[run_id-1].veh_exp.P2_U.loc[veh.id]
@@ -356,7 +355,6 @@ def d2d_kpi_veh(*args,**kwargs):
         if traveller in pax_list and sim.pax[traveller].platform_id == 2:
             P2_current_pax += 1
     P_current_pax = [P1_current_pax, P2_current_pax]
-            
     if params.lock_out:
         ret['TOM_OUT'] = ret.apply(lambda row: lock_out_part_1(row, sim, ret), axis=1)
         if run_id > 0:
@@ -382,26 +380,27 @@ def lock_out_part_2(row, sim, ret, P_current_pax):
     run_id = sim.run_id
     veh_id = row.name
     pax_per_veh = 10 
-        
+    
     if row.TOM_OUT:
         return row.TOM_OUT
-    
+        
     else:
         if row.TOM_platform_id==1:
-            P1_current_veh = len(ret[(ret.TOM_OUT==False) & (ret.TOM_platform_id==1)])
-            P1_required_veh = 1 + (P_current_pax[0]/pax_per_veh)
+            P1_current_vehs = ret[(ret.TOM_OUT==False) & (ret.TOM_platform_id==1)] 
+            P1_required_veh_number = round(1 + (P_current_pax[0]/pax_per_veh))
             
-            if P1_current_veh > P1_required_veh:
-                return bool(not veh_id in ret.P1_U.sort_values(ascending=False).index[:round(P1_required_veh)])
+            if len(P1_current_vehs) > P1_required_veh_number: 
+                return bool(not veh_id in P1_current_vehs.P1_U.sort_values(ascending=False).index[:P1_required_veh_number])
             else:
                 return row.TOM_OUT
+            
         
         if row.TOM_platform_id==2:
-            P2_current_veh = len(ret[(ret.TOM_OUT==False) & (ret.TOM_platform_id==2)])
-            P2_required_veh = 1 + (P_current_pax[1]/pax_per_veh)
+            P2_current_vehs = ret[(ret.TOM_OUT==False) & (ret.TOM_platform_id==2)] 
+            P2_required_veh_number = round(1 + (P_current_pax[1]/pax_per_veh))
             
-            if P2_current_veh > P2_required_veh:
-                return bool(not veh_id in ret.P2_U.sort_values(ascending=False).index[:round(P2_required_veh)])
+            if len(P2_current_vehs) > P2_required_veh_number:
+                return bool(not veh_id in P2_current_vehs.P2_U.sort_values(ascending=False).index[:P2_required_veh_number])
             else:
                 return row.TOM_OUT
     
@@ -586,7 +585,6 @@ def d2d_kpi_pax(*args,**kwargs):
     #--------------------------------------------------------
     """ Utility gained through Word of Mouth (WOM)"""
     
-    # print(ret.P1_INFORMED)
     ret['pre_P1_WOM_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.P1_WOM_U
     ret['P1_WOM_U'] = params.d2d.ini_att if run_id == 0 else sim.res[run_id-1].pax_exp.P1_WOM_U
     
