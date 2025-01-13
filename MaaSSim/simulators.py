@@ -497,15 +497,14 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
                     next_move = 1
                         
                 else:
-                    if len(P1_moves) > 1:
-                        last_valid_tuple = next((item for item in reversed(P1_moves) if item[1] != P1_moves[-1][1]), None) 
-                        matching_move = next((item for item in ava_moves if item[1] == last_valid_tuple[1]), None)
-                        next_move = ava_moves.index(matching_move) 
-                    else:
-                        next_move = 1
+                    next_move = 1
+                    # if len(P1_moves) > 1:
+                    #     last_valid_tuple = next((item for item in reversed(P1_moves) if item[1] != P1_moves[-1][1]), None) 
+                    #     matching_move = next((item for item in ava_moves if item[1] == last_valid_tuple[1]), None)
+                    #     next_move = ava_moves.index(matching_move) 
+                    # else:
+                    #     next_move = 1
                 
-                if d<200: next_move=1 ################################################
-                if next_move ==0: next_move=1#########################################
                 p1_i = max(0, min(max_i, p1_i + [-1, 0, 1][next_move]))
                 sim.platforms.fare[1] = fare_grid[p2_i, p1_i][1]
                 sim.res = copy.deepcopy(res_list[next_move])
@@ -584,15 +583,14 @@ def Try_and_Select(config="data/config.json", inData=None, params=None, **kwargs
                     next_move = 1
                         
                 else:
-                    if len(P2_moves) > 1:
-                        last_valid_tuple = next((item for item in reversed(P2_moves) if item[1] != P2_moves[-1][1]), None) 
-                        matching_move = next((item for item in ava_moves if item[1] == last_valid_tuple[1]), None)
-                        next_move = ava_moves.index(matching_move)
-                    else:
-                        next_move = 1
+                    next_move = 1
+                    # if len(P2_moves) > 1:
+                    #     last_valid_tuple = next((item for item in reversed(P2_moves) if item[1] != P2_moves[-1][1]), None) 
+                    #     matching_move = next((item for item in ava_moves if item[1] == last_valid_tuple[1]), None)
+                    #     next_move = ava_moves.index(matching_move)
+                    # else:
+                    #     next_move = 1
                 
-                if d<200: next_move=1 ################################################
-                if next_move ==0: next_move=1#########################################
                 p2_i = max(0, min(max_i, p2_i + [-1, 0, 1][next_move]))
                 sim.platforms.fare[2] = fare_grid[p2_i, p1_i][0] 
                 sim.res = copy.deepcopy(res_list[next_move]) 
@@ -722,6 +720,16 @@ def Try_and_Select_X(config="data/config.json", inData=None, params=None, **kwar
     # Initialization ------------------------------------------------------
 
     for day in range(params.get('nD', 1)):
+        
+        if day>=200:
+            sim.platforms.fare[1] = 1.2
+        else:
+            sim.platforms.fare[1] = 1.0
+            
+        if day>=250:
+            sim.platforms.fare[2] = 1.2
+        else:
+            sim.platforms.fare[2] = 1.0
         
         sim.run_id = day
         sim.make_and_run(run_id=day)
