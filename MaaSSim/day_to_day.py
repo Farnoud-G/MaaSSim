@@ -174,7 +174,7 @@ def S_traveller_opt_out_TS(pax, **kwargs):
 
     if rand_v <= alts_p['PT']:
         return True  # opts for PT
-    elif rand_v <= alts_p['PT'] + alts_p['P1']:
+    elif rand_v <= alts_p['PT'] + (1-alts_p['PT'])/2: #alts_p['PT'] + alts_p['P1']:
         pax.platform_id = 1
         pax.pax.platform = 1  # opts for platform number 1
         pax.platform = pax.sim.plats[pax.pax.platform]
@@ -197,8 +197,7 @@ def d2d_kpi_veh(*args,**kwargs):
     platforms = sim.platforms
     run_id = kwargs.get('run_id', None)
     simrun = sim.runs[run_id]
-    # sub_lim = params.simTime*params.VoT
-    sub_lim = params.simTime*params.min_wage # 14.4
+    sub_lim = params.simTime*params.min_wage 
     vehindex = sim.inData.vehicles.index
     df = simrun['rides'].copy()  # results of previous simulation
     DECIDES_NOT_TO_DRIVE = df[df.event == driverEvent.DECIDES_NOT_TO_DRIVE.name].veh  # track drivers out
@@ -255,8 +254,11 @@ def d2d_kpi_veh(*args,**kwargs):
     
     #-------------------------------------------------------
     """ Utility gained through experience"""
-
-    ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
+      
+    if params.d2d.heterogeneous:
+        ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (sim.vehs[row.name].veh.RW-row['ACTUAL_INC'])/sim.vehs[row.name].veh.RW, axis=1)
+    else:
+        ret['inc_dif'] = ret.apply(lambda row: 0 if row.mu==0 else (params.d2d.res_wage-row['ACTUAL_INC'])/params.d2d.res_wage, axis=1)
     
     # P1-------------------------------
     ret['pre_P1_EXPERIENCE_U'] = params.d2d.Eini_att if run_id == 0 else sim.res[run_id-1].veh_exp.P1_EXPERIENCE_U

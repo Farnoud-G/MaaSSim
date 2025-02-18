@@ -9,6 +9,7 @@ from dotmap import DotMap
 import math
 import random
 import numpy as np
+from scipy.stats import norm
 import os
 
 from osmnx.distance import get_nearest_node
@@ -173,11 +174,14 @@ def generate_vehicles(_inData, _params, nV):
     
     vehs['P1_U'] = _params.d2d.ini_att #f#
     vehs['P2_U'] = _params.d2d.ini_att
-    
     vehs['learning'] = 'on' #f#
+    
     if _params.d2d.heterogeneous: #f#
-        vehs['res_wage_eps'] = np.random.gumbel(0, _params.d2d.res_wage_sp, nV) #f#
-        vehs['exp_income_eps'] = np.random.gumbel(0, _params.d2d.exp_income_sp, nV) #f#
+        sigma = 0.741
+        mu = np.log(12) - sigma**2 / 2  # Ensure mean is 12 = params.VoT
+        np.random.seed(12)
+        vehs['RW']  = np.random.lognormal(mean=mu, sigma=sigma, size=_params.nV)
+        # vehs['RW'] = np.random.gumbel(0, _params.d2d.res_wage_sp, nV) #f#
         
     return vehs
 

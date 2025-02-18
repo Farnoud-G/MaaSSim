@@ -721,15 +721,15 @@ def Try_and_Select_X(config="data/config.json", inData=None, params=None, **kwar
 
     for day in range(params.get('nD', 1)):
         
-        if day>=200:
+        if day==200:
             sim.platforms.fare[1] = 1.2
-        else:
-            sim.platforms.fare[1] = 1.0
+        if day==300:
+            sim.platforms.fare[1] = 1.4
             
-        if day>=250:
+        if day==250:
             sim.platforms.fare[2] = 1.2
-        else:
-            sim.platforms.fare[2] = 1.0
+        if day==350:
+            sim.platforms.fare[2] = 1.4
         
         sim.run_id = day
         sim.make_and_run(run_id=day)
