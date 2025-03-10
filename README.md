@@ -37,7 +37,7 @@ Each simulation run results in two sets of outputs, one being the sequence of re
 
 ## Documentation
 
-1. [MoMaS Tutorial](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials)
+1. [MoMaS Tutorial](https://github.com/Farnoud-G/MaaSSim/blob/Coevolution/docs/Coevolution_Experiments/MoMaS_tutorial.ipynb)
 2. [MaaSSim Tutorial](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials)
 
     
