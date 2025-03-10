@@ -160,7 +160,7 @@ def simulate(config="data/config.json", inData=None, params=None, **kwargs):
         
         # 4- Marketing adjustment ------------------------------------------
         # sim.platforms.daily_marketing[1] = True if len(sim.res) in range(50, 100) else False # for episodes
-        sim.platforms.daily_marketing[1] = True if len(sim.res) in range(0, 50) else False # for baseline
+        # sim.platforms.daily_marketing[1] = True if len(sim.res) in range(0, 50) else False # for baseline
         
         #====================================================================
 
