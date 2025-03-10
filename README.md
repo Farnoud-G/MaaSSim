@@ -1,6 +1,6 @@
 ### MoMaS: two-sided Mobility Market Simulation farmework 
 
-You can access the full paper on MoMaS and its applications [here](https://www.sciencedirect.com/science/article/pii/S0968090X24005114?ref=pdf_download&fr=RR-2&rr=91e147d6fdfdb8f6].
+You can access the full paper on MoMaS and its applications [here](https://www.sciencedirect.com/science/article/pii/S0968090X24005114?ref=pdf_download&fr=RR-2&rr=91e147d6fdfdb8f6).
 
  MoMaS is an agent-based simulation framework built on [MaaSSim](https://github.com/RafalKucharskiPK/MaaSSim), reproducing the evolution in two-sided mobility markets. It features a novel day-to-day learning model specific to platform’s growth mechanism. In MoMaS, each traveler/driver agent gradually learns the actual platform utility based on multiple endogenous and exogenous factors. While agent's perceived utility of platform mainly relies on the collected experiences (fare and waiting time for traveler and income for driver), other significant components, namely: platform’s marketing and peer’s word-of-mouth are included in the decision making process. While these three components are sufficient to encapsulate the essence of participation decision of the agents in two-sided mobility market, further extensions and refinements are possible for a more nuanced understanding. Each utility component is updated separately upon receiving a new utility signal from the respective source, such as agent's own experience, marketing campaign of platform, and peers' opinion.
 
