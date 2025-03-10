@@ -37,16 +37,8 @@ Each simulation run results in two sets of outputs, one being the sequence of re
 
 ## Documentation
 
-1. [Tutorials](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials):
-* [Quickstart](https://github.com/RafalKucharskiPK/MaaSSim/blob/master/docs/tutorials/01_Quickstart.ipynb)
-* [Overview](https://github.com/RafalKucharskiPK/MaaSSim/blob/master/docs/tutorials/00_MaaSSim_at_glance.ipynb)
-* [Configuration](https://github.com/RafalKucharskiPK/MaaSSim/blob/master/docs/tutorials/A_04_Config.ipynb)
-* [Your own networks](https://github.com/RafalKucharskiPK/MaaSSim/blob/master/docs/tutorials/A_01%20NetworkGraphs.ipynb)
-* [You own demand](https://github.com/RafalKucharskiPK/MaaSSim/blob/master/docs/tutorials/A_03%20Synthetic%20Demand.ipynb)
-* [Developing own decision functions](https://github.com/RafalKucharskiPK/MaaSSim/blob/master/docs/tutorials/06_User_defined_functionalities.ipynb)
-* [Interpreting results](https://github.com/RafalKucharskiPK/MaaSSim/blob/master/docs/tutorials/05_Results.ipynb)
-
-2. [Reproducible use-cases and experiments](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/Experiments)
+1. [MoMaS Tutorials](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials)
+2. [MaaSSim Tutorials](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials)
 
     
 ----
