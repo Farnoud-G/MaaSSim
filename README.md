@@ -37,8 +37,8 @@ Each simulation run results in two sets of outputs, one being the sequence of re
 
 ## Documentation
 
-1. [MoMaS Tutorials](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials)
-2. [MaaSSim Tutorials](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials)
+1. [MoMaS Tutorial](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials)
+2. [MaaSSim Tutorial](https://github.com/RafalKucharskiPK/MaaSSim/tree/master/docs/tutorials)
 
     
 ----
