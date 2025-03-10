@@ -1,5 +1,7 @@
+### MoMaS: two-sided Mobility Market Simulation farmework 
+
 # AAMAS-2024, supplementary material for the paper: Modelling the Rise and Fall of Two-sided Markets
-You can access the paper, the reproducible code, and the results [here](https://github.com/Farnoud-G/MaaSSim/tree/Coevolution/docs/AAMAS-2024).
+You can access the full paper on MoMaS and its applications [here]([https://github.com/Farnoud-G/MaaSSim/tree/Coevolution/docs/AAMAS-2024](https://www.sciencedirect.com/science/article/pii/S0968090X24005114?ref=pdf_download&fr=RR-2&rr=91e147d6fdfdb8f6)).
 
 -----
 ### MaaSSim: agent-based two-sided mobility platform simulator
